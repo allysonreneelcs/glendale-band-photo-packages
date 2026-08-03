@@ -5,7 +5,7 @@ window.BAND_PHOTO_ORDER_EMAIL = "AllysonreneeLCS@gmail.com";
 // paste the function URL base here, e.g.:
 //   "https://glendale-band-photo-packages.vercel.app/api/create-checkout-session"
 // Leave empty or REPLACE to disable online card payments until set up.
-window.STRIPE_CHECKOUT_API_URL = "REPLACE_WITH_VERCEL_CHECKOUT_API_URL";
+window.STRIPE_CHECKOUT_API_URL = "https://glendale-band-photo-packages.vercel.app/api/create-checkout-session";
 
 // Optional: Stripe publishable key (pk_test_... / pk_live_...).
 // Not required for Checkout redirect flow, but useful if you add Stripe.js later.

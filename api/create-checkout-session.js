@@ -169,6 +169,9 @@ module.exports = async function handler(req, res) {
       },
       payment_intent_data: {
         description: `Glendale band photo — ${student} — ${pkg.name}`,
+        // Ensures Stripe can email a receipt to the parent (also enable
+        // Settings → Customer emails → successful payments in the Dashboard).
+        receipt_email: email,
       },
     });
 
