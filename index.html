@@ -423,7 +423,7 @@
 </head>
 <body>
   <div class="toolbar">
-    <button type="submit" form="order-form">Submit order</button>
+    <button type="submit" form="order-form" id="toolbar-submit">Pay &amp; submit</button>
     <button type="button" class="ghost" onclick="window.print()">Print</button>
     <button type="button" class="ghost" onclick="clearForm()">Clear</button>
   </div>
@@ -440,8 +440,8 @@
       </div>
       <div class="form-meta">
         <strong>Student portraits</strong>
-        <span class="web-only">Submit online below<br /></span>
-        Or print &amp; return with payment<br />
+        <span class="web-only">Pay online with card or<br /></span>
+        print &amp; return with payment<br />
         One form per student
       </div>
     </header>
@@ -468,7 +468,7 @@
       <h2>Choose one package</h2>
       <div class="packages" role="radiogroup" aria-label="Photo package">
         <label class="pkg">
-          <input type="radio" name="package" value="Digital Rights — $20" data-price="20" required />
+          <input type="radio" name="package" value="Digital Rights — $20" data-key="digital" data-price="20" required />
           <div class="pkg-body">
             <h3>1 · Digital Rights</h3>
             <ul>
@@ -480,7 +480,7 @@
         </label>
 
         <label class="pkg">
-          <input type="radio" name="package" value="Keepsake — $35" data-price="35" />
+          <input type="radio" name="package" value="Keepsake — $35" data-key="keepsake" data-price="35" />
           <div class="pkg-body">
             <h3>2 · Keepsake</h3>
             <ul>
@@ -494,7 +494,7 @@
         </label>
 
         <label class="pkg featured">
-          <input type="radio" name="package" value="Showcase — $60" data-price="60" />
+          <input type="radio" name="package" value="Showcase — $60" data-key="showcase" data-price="60" />
           <div class="pkg-body">
             <h3>3 · Showcase <span class="badge">Best value</span></h3>
             <ul>
@@ -507,7 +507,7 @@
         </label>
 
         <label class="pkg">
-          <input type="radio" name="package" value="All-Star — $95" data-price="95" />
+          <input type="radio" name="package" value="All-Star — $95" data-key="allstar" data-price="95" />
           <div class="pkg-body">
             <h3>4 · All-Star</h3>
             <ul>
@@ -587,13 +587,15 @@
           </div>
         </div>
         <div class="checks">
-          <label><input type="checkbox" name="pay_cash" value="yes" /> Cash</label>
-          <label><input type="checkbox" name="pay_check" value="yes" /> Check</label>
-          <label><input type="checkbox" name="pay_other" value="yes" /> Other / pay later</label>
+          <label><input type="radio" name="pay_method" value="card" id="pay_card" checked /> Pay online with card</label>
+          <label><input type="radio" name="pay_method" value="cash" id="pay_cash" /> Cash</label>
+          <label><input type="radio" name="pay_method" value="check" id="pay_check" /> Check</label>
+          <label><input type="radio" name="pay_method" value="other" id="pay_other" /> Other / pay later</label>
           <label style="flex: 1; min-width: 8rem;">
             Check # <input class="line" name="check_number" type="text" style="display:inline-block;width:5rem;min-height:1.2rem;" />
           </label>
         </div>
+        <p class="note" id="pay-online-note">Online card payments use Stripe Checkout. You’ll be redirected to pay securely, then returned here.</p>
         <div class="sig">
           <div class="field">
             <label class="caption" for="signature">Type full name as signature</label>
@@ -622,8 +624,8 @@
             <div class="money">$<input class="line" id="grand-total" name="grand_total" type="text" readonly /></div>
           </div>
         </div>
-        <button class="submit-btn web-only" type="submit">Submit order</button>
-        <p class="note" style="margin-top:0.55rem;">You’ll get a confirmation email. Pay cash/check to the photographer or as directed by band staff.</p>
+        <button class="submit-btn web-only" type="submit" id="submit-btn-label">Pay &amp; submit order</button>
+        <p class="note" style="margin-top:0.55rem;" id="submit-help">You’ll pay securely with Stripe, then we’ll email the photographer your order details.</p>
       </div>
     </div>
 
@@ -640,6 +642,7 @@
     const addonTotal = document.getElementById("addon-total");
     const grandTotal = document.getElementById("grand-total");
     const statusEl = document.getElementById("status");
+    const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
 
     function money(n) {
       return n.toFixed(2).replace(/\.00$/, "");
@@ -652,6 +655,43 @@
       statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
+    function checkoutApiConfigured() {
+      const url = (window.STRIPE_CHECKOUT_API_URL || "").trim();
+      return url && !url.includes("REPLACE");
+    }
+
+    function selectedPayMethod() {
+      const el = form.querySelector('input[name="pay_method"]:checked');
+      return el ? el.value : "card";
+    }
+
+    function updatePayUi() {
+      const method = selectedPayMethod();
+      const online = method === "card";
+      const onlineReady = checkoutApiConfigured();
+      const submitLabel = online ? "Pay & submit order" : "Submit order";
+      const toolbar = document.getElementById("toolbar-submit");
+      const mainBtn = document.getElementById("submit-btn-label");
+      const help = document.getElementById("submit-help");
+      const note = document.getElementById("pay-online-note");
+
+      if (toolbar) toolbar.textContent = online ? "Pay & submit" : "Submit order";
+      if (mainBtn) mainBtn.textContent = submitLabel;
+
+      if (online) {
+        help.textContent = onlineReady
+          ? "You’ll pay securely with Stripe, then we’ll email the photographer your order details."
+          : "Online card payment isn’t connected yet. Choose cash/check, or ask the photographer to finish Stripe setup.";
+        note.style.display = "";
+        note.textContent = onlineReady
+          ? "Online card payments use Stripe Checkout. You’ll be redirected to pay securely, then returned here."
+          : "Card payments need a one-time Stripe + Vercel setup (see STRIPE-SETUP.md). Cash and check still work.";
+      } else {
+        help.textContent = "You’ll get a confirmation email. Pay cash/check to the photographer or as directed by band staff.";
+        note.style.display = "none";
+      }
+    }
+
     function addonSummary() {
       const parts = [];
       form.querySelectorAll(".qty").forEach((input) => {
@@ -661,14 +701,49 @@
       return parts.length ? parts.join(", ") : "None";
     }
 
+    function addonQuantities() {
+      const addons = {};
+      form.querySelectorAll(".qty").forEach((input) => {
+        addons[input.name] = Number(input.value) || 0;
+      });
+      return addons;
+    }
+
     function paymentMethods() {
-      const methods = [];
-      if (form.pay_cash.checked) methods.push("Cash");
-      if (form.pay_check.checked) methods.push("Check");
-      if (form.pay_other.checked) methods.push("Other / pay later");
+      const method = selectedPayMethod();
+      const labels = {
+        card: "Pay online with card (Stripe)",
+        cash: "Cash",
+        check: "Check",
+        other: "Other / pay later",
+      };
+      const methods = [labels[method] || method];
       const checkNo = form.check_number.value.trim();
       if (checkNo) methods.push("Check # " + checkNo);
-      return methods.length ? methods.join(", ") : "Not specified";
+      return methods.join(", ");
+    }
+
+    function buildOrderPayload(extraPayment) {
+      const selected = form.querySelector('input[name="package"]:checked');
+      return {
+        _subject: "Band photo order — " + form.student.value,
+        _template: "table",
+        _captcha: "false",
+        Student: form.student.value,
+        Grade: form.grade.value || "—",
+        Instrument: form.instrument.value || "—",
+        Package: selected ? selected.value : "",
+        Add_ons: addonSummary(),
+        Package_total: "$" + (pkgTotal.value || "0"),
+        Addon_total: "$" + (addonTotal.value || "0"),
+        Grand_total: "$" + (grandTotal.value || "0"),
+        Parent: form.parent.value,
+        Phone: form.phone.value,
+        Email: form.email.value,
+        Payment: extraPayment || paymentMethods(),
+        Signature: form.signature.value,
+        Date: form.date.value,
+      };
     }
 
     function recalc() {
@@ -689,14 +764,75 @@
       grandTotal.value = pkg || addons ? money(pkg + addons) : "";
     }
 
-    form.addEventListener("change", recalc);
+    form.addEventListener("change", (event) => {
+      recalc();
+      if (event.target && event.target.name === "pay_method") updatePayUi();
+    });
     form.addEventListener("input", recalc);
 
     function clearForm() {
       form.reset();
       form.querySelectorAll(".line-total").forEach((el) => { el.textContent = "$0"; });
       statusEl.classList.remove("show", "error");
+      if (!form.date.value) form.date.valueAsDate = new Date();
+      document.getElementById("pay_card").checked = true;
       recalc();
+      updatePayUi();
+    }
+
+    async function emailOrder(payload) {
+      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+      if (!orderEmail || orderEmail.includes("REPLACE")) {
+        throw new Error("Order email isn’t connected yet.");
+      }
+      const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || "Could not send order.");
+      }
+    }
+
+    async function startStripeCheckout(selected) {
+      const apiUrl = (window.STRIPE_CHECKOUT_API_URL || "").trim();
+      const base = window.location.href.replace(/[#?].*$/, "").replace(/index\.html$/i, "");
+      const thanksBase = base.endsWith("/") ? base + "thanks.html" : base.replace(/\/?$/, "/") + "thanks.html";
+      const cancelUrl = window.location.href.split("#")[0].split("?")[0] + "?canceled=1";
+
+      const orderSnapshot = buildOrderPayload("Paid online via Stripe (pending confirmation)");
+      sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderSnapshot));
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          packageKey: selected.dataset.key,
+          student: form.student.value,
+          grade: form.grade.value,
+          instrument: form.instrument.value,
+          parent: form.parent.value,
+          phone: form.phone.value,
+          email: form.email.value,
+          signature: form.signature.value,
+          date: form.date.value,
+          addons: addonQuantities(),
+          successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
+          cancelUrl: cancelUrl,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.url) {
+        sessionStorage.removeItem(ORDER_STORAGE_KEY);
+        throw new Error(result.error || "Could not start card payment.");
+      }
+      window.location.href = result.url;
     }
 
     form.addEventListener("submit", async (event) => {
@@ -711,47 +847,28 @@
 
       if (!form.reportValidity()) return;
 
+      const method = selectedPayMethod();
+      if (method === "card" && !checkoutApiConfigured()) {
+        showStatus("Online card payment isn’t set up yet. Choose cash, check, or other — or ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
+        return;
+      }
+
       const selected = form.querySelector('input[name="package"]:checked');
       const submitButtons = document.querySelectorAll('button[type="submit"]');
       submitButtons.forEach((btn) => { btn.disabled = true; });
-      showStatus("Sending your order…");
-
-      const payload = {
-        _subject: "Band photo order — " + form.student.value,
-        _template: "table",
-        _captcha: "false",
-        Student: form.student.value,
-        Grade: form.grade.value || "—",
-        Instrument: form.instrument.value || "—",
-        Package: selected ? selected.value : "",
-        Add_ons: addonSummary(),
-        Package_total: "$" + (pkgTotal.value || "0"),
-        Addon_total: "$" + (addonTotal.value || "0"),
-        Grand_total: "$" + (grandTotal.value || "0"),
-        Parent: form.parent.value,
-        Phone: form.phone.value,
-        Email: form.email.value,
-        Payment: paymentMethods(),
-        Signature: form.signature.value,
-        Date: form.date.value,
-      };
 
       try {
-        const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(result.message || "Could not send order.");
+        if (method === "card") {
+          showStatus("Redirecting to secure card payment…");
+          await startStripeCheckout(selected);
+          return;
         }
+
+        showStatus("Sending your order…");
+        await emailOrder(buildOrderPayload());
         window.location.href = "thanks.html";
       } catch (err) {
-        showStatus("Something went wrong sending the order. Please print the form or try again. (" + err.message + ")", true);
+        showStatus("Something went wrong. Please print the form or try again. (" + err.message + ")", true);
         submitButtons.forEach((btn) => { btn.disabled = false; });
       }
     });
@@ -759,7 +876,15 @@
     if (!form.date.value) {
       form.date.valueAsDate = new Date();
     }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("canceled") === "1") {
+      showStatus("Card payment was canceled. Your order was not submitted. You can try again or choose cash/check.", true);
+      history.replaceState({}, "", window.location.pathname);
+    }
+
     recalc();
+    updatePayUi();
   </script>
 </body>
 </html>

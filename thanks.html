@@ -57,19 +57,140 @@
       color: var(--muted);
       line-height: 1.5;
     }
+    .summary {
+      margin: 1rem 0;
+      padding: 0.85rem 0;
+      border-top: 1px solid #c5ccd6;
+      border-bottom: 1px solid #c5ccd6;
+      font-size: 0.92rem;
+      color: var(--ink);
+    }
+    .summary dt {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 0.55rem;
+    }
+    .summary dd {
+      margin: 0.1rem 0 0;
+    }
     a {
       color: var(--navy);
       font-weight: 700;
     }
+    .status-msg {
+      font-size: 0.85rem;
+      color: var(--navy);
+    }
+    .status-msg.error { color: #5c1d1d; }
   </style>
 </head>
 <body>
   <main class="card">
     <p class="eyebrow">Glendale Highschool Marching Band</p>
-    <h1>Order received</h1>
-    <p>Thanks — your photo order was submitted. The photographer will follow up about payment and delivery.</p>
-    <p>First-time setup note for the photographer: FormSubmit may email you once to confirm your address before orders start arriving in your inbox.</p>
+    <h1 id="title">Order received</h1>
+    <p id="lead">Thanks — your photo order was submitted. The photographer will follow up about payment and delivery.</p>
+    <dl class="summary" id="summary" hidden></dl>
+    <p class="status-msg" id="notify" hidden></p>
     <p><a href="index.html">Submit another order</a></p>
   </main>
+
+  <script src="config.js"></script>
+  <script>
+    const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get("paid") === "1";
+    const sessionId = (params.get("session_id") || "").trim();
+    const title = document.getElementById("title");
+    const lead = document.getElementById("lead");
+    const summary = document.getElementById("summary");
+    const notify = document.getElementById("notify");
+
+    function renderSummary(order) {
+      if (!order) return;
+      const rows = [
+        ["Student", order.Student],
+        ["Package", order.Package],
+        ["Add-ons", order.Add_ons],
+        ["Total", order.Grand_total],
+        ["Parent", order.Parent],
+        ["Email", order.Email],
+        ["Payment", order.Payment],
+      ];
+      summary.innerHTML = "";
+      rows.forEach(([label, value]) => {
+        if (!value) return;
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = value;
+        summary.appendChild(dt);
+        summary.appendChild(dd);
+      });
+      summary.hidden = false;
+    }
+
+    async function emailOrder(payload) {
+      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+      if (!orderEmail || orderEmail.includes("REPLACE")) {
+        throw new Error("Order email isn’t connected yet.");
+      }
+      const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || "Could not send order email.");
+      }
+    }
+
+    (async function init() {
+      let order = null;
+      try {
+        order = JSON.parse(sessionStorage.getItem(ORDER_STORAGE_KEY) || "null");
+      } catch {
+        order = null;
+      }
+
+      if (paid) {
+        title.textContent = "Payment received";
+        lead.textContent = "Thanks — your card payment went through and your photo order is on its way to the photographer.";
+        if (order) {
+          order.Payment = "Paid online via Stripe" + (sessionId ? " · session " + sessionId : "");
+          renderSummary(order);
+          notify.hidden = false;
+          notify.textContent = "Sending order details to the photographer…";
+          try {
+            const sentKey = "bandPhotoOrderSent:" + (sessionId || order.Student + order.Grand_total);
+            if (!sessionStorage.getItem(sentKey)) {
+              await emailOrder(order);
+              sessionStorage.setItem(sentKey, "1");
+            }
+            notify.textContent = "Order details were emailed to the photographer.";
+            sessionStorage.removeItem(ORDER_STORAGE_KEY);
+          } catch (err) {
+            notify.classList.add("error");
+            notify.textContent = "Payment succeeded, but the order email didn’t send automatically. Please screenshot this page or email the photographer. (" + err.message + ")";
+          }
+        } else {
+          lead.textContent = "Thanks — your card payment went through. If you don’t hear back, contact the photographer and mention your Stripe payment.";
+          if (sessionId) {
+            notify.hidden = false;
+            notify.textContent = "Stripe session: " + sessionId;
+          }
+        }
+      } else {
+        if (order) renderSummary(order);
+        sessionStorage.removeItem(ORDER_STORAGE_KEY);
+      }
+    })();
+  </script>
 </body>
 </html>
