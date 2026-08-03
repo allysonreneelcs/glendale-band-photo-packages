@@ -1,9 +1,9 @@
-# Parent order form
+# Parent order form (live website)
 
-Use the printable fillable form:
+Public order page (after GitHub Pages is on):
 
-**[order-form.html](./order-form.html)**
+**https://allysonreneelcs.github.io/glendale-band-photo-packages/**
 
-Open in a browser → fill on screen (totals calculate automatically) or print blank copies for parents to fill by hand.
+Local file: [index.html](./index.html)
 
-Print tip: use **Print form** at the top, Letter size, no headers/footers if you want a cleaner page.
+Set your order inbox in [config.js](./config.js), then commit and push.

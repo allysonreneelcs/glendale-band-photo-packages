@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order received — Glendale Band Photos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #4a5568;
+      --paper: #f7f4ef;
+      --brass: #b08d3e;
+      --navy: #1e3a5f;
+      --navy-deep: #13263f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 120% 80% at 0% 0%, rgba(30, 58, 95, 0.08), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 100% 100%, rgba(176, 141, 62, 0.1), transparent 50%),
+        var(--paper);
+    }
+    .card {
+      width: min(32rem, 100%);
+      background: #fff;
+      border: 1.5px solid var(--navy);
+      padding: 2rem 1.75rem;
+    }
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--brass);
+      margin: 0 0 0.5rem;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 1.75rem;
+      line-height: 1.1;
+      color: var(--navy-deep);
+      text-transform: uppercase;
+    }
+    p {
+      margin: 0 0 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    a {
+      color: var(--navy);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">Glendale Highschool Marching Band</p>
+    <h1>Order received</h1>
+    <p>Thanks — your photo order was submitted. The photographer will follow up about payment and delivery.</p>
+    <p>First-time setup note for the photographer: FormSubmit may email you once to confirm your address before orders start arriving in your inbox.</p>
+    <p><a href="index.html">Submit another order</a></p>
+  </main>
+</body>
+</html>

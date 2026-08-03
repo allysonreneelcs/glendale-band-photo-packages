@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glendale Highschool Marching Band Photo Orders</title>
+  <meta name="description" content="Order Glendale Highschool Marching Band student portrait packages and digital rights." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #4a5568;
+      --rule: #c5ccd6;
+      --paper: #f7f4ef;
+      --panel: #ffffff;
+      --brass: #b08d3e;
+      --navy: #1e3a5f;
+      --navy-deep: #13263f;
+      --check: #1e3a5f;
+    }
+
+    * { box-sizing: border-box; }
+
+    @page {
+      size: letter;
+      margin: 0.45in;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      font-size: 11.5px;
+      line-height: 1.35;
+      background:
+        radial-gradient(ellipse 120% 80% at 0% 0%, rgba(30, 58, 95, 0.08), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 100% 100%, rgba(176, 141, 62, 0.1), transparent 50%),
+        var(--paper);
+      min-height: 100vh;
+    }
+
+    .sheet {
+      width: 8.5in;
+      max-width: 100%;
+      min-height: 11in;
+      margin: 1.25rem auto;
+      padding: 0.55in 0.55in 0.45in;
+      background: var(--panel);
+      border: 1px solid var(--rule);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      align-items: end;
+      padding-bottom: 0.55rem;
+      border-bottom: 3px solid var(--navy);
+      margin-bottom: 0.7rem;
+    }
+
+    .brand {
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 1.85rem;
+      letter-spacing: 0.02em;
+      line-height: 0.95;
+      color: var(--navy-deep);
+      text-transform: uppercase;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      color: var(--brass);
+      margin-bottom: 0.2rem;
+      font-family: "Source Sans 3", sans-serif;
+      font-weight: 700;
+    }
+
+    .form-meta {
+      text-align: right;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .form-meta strong {
+      display: block;
+      color: var(--navy);
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0 0 0.45rem;
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--navy);
+    }
+
+    section { margin-bottom: 0.65rem; }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap: 0.45rem 0.6rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .field.wide { grid-column: 1 / -1; }
+
+    label.caption {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .line {
+      border: none;
+      border-bottom: 1.5px solid var(--ink);
+      background: transparent;
+      font: inherit;
+      color: var(--ink);
+      padding: 0.2rem 0.1rem;
+      width: 100%;
+      min-height: 1.45rem;
+    }
+
+    .line:focus {
+      outline: none;
+      border-bottom-color: var(--brass);
+    }
+
+    .packages {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+
+    .pkg {
+      position: relative;
+      border: 1.5px solid var(--rule);
+      padding: 0.45rem 0.5rem 0.45rem 0.45rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.45rem;
+      align-items: start;
+      cursor: pointer;
+      background: #fbfaf8;
+    }
+
+    .pkg:has(input:checked) {
+      border-color: var(--navy);
+      background: #eef3f8;
+    }
+
+    .pkg.featured {
+      border-color: var(--brass);
+      box-shadow: inset 0 0 0 1px rgba(176, 141, 62, 0.35);
+    }
+
+    .pkg input[type="radio"] {
+      width: 1rem;
+      height: 1rem;
+      margin-top: 0.15rem;
+      accent-color: var(--check);
+    }
+
+    .pkg-body h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--navy-deep);
+    }
+
+    .pkg-body ul {
+      margin: 0.2rem 0 0;
+      padding-left: 1rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .pkg-body li { margin: 0.05rem 0; }
+
+    .pkg-price {
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 1.15rem;
+      color: var(--navy);
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 0.35rem;
+      padding: 0.08rem 0.35rem;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--brass);
+      color: #fff;
+      vertical-align: middle;
+    }
+
+    .note {
+      margin: 0.35rem 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .addons {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .addons th,
+    .addons td {
+      border-bottom: 1px solid var(--rule);
+      padding: 0.28rem 0.2rem;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .addons th {
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .addons td.num,
+    .addons th.num { text-align: right; }
+
+    .addons td.center,
+    .addons th.center { text-align: center; }
+
+    .qty {
+      width: 2.4rem;
+      text-align: center;
+      border: 1.5px solid var(--rule);
+      font: inherit;
+      padding: 0.15rem;
+      background: #fff;
+    }
+
+    .totals {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 0.6rem;
+      margin-top: 0.35rem;
+    }
+
+    .pay-box,
+    .sum-box {
+      border: 1.5px solid var(--navy);
+      padding: 0.5rem 0.55rem;
+    }
+
+    .sum-rows { display: grid; gap: 0.35rem; }
+
+    .sum-row {
+      display: grid;
+      grid-template-columns: 1fr 4.5rem;
+      align-items: end;
+      gap: 0.4rem;
+    }
+
+    .sum-row.total {
+      margin-top: 0.15rem;
+      padding-top: 0.35rem;
+      border-top: 2px solid var(--navy);
+      font-weight: 700;
+    }
+
+    .sum-row .money {
+      display: flex;
+      align-items: end;
+      gap: 0.15rem;
+      font-weight: 700;
+    }
+
+    .sum-row .money .line {
+      text-align: right;
+      font-weight: 700;
+    }
+
+    .checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem 1rem;
+      margin: 0.35rem 0 0.45rem;
+      font-size: 0.85rem;
+    }
+
+    .checks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: pointer;
+    }
+
+    .sig {
+      display: grid;
+      grid-template-columns: 1.5fr 0.7fr;
+      gap: 0.6rem;
+      margin-top: 0.4rem;
+    }
+
+    footer {
+      margin-top: 0.55rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      color: var(--muted);
+      font-size: 0.68rem;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.65rem;
+      background: rgba(19, 38, 63, 0.92);
+      backdrop-filter: blur(6px);
+    }
+
+    .toolbar button,
+    .submit-btn {
+      border: none;
+      background: var(--brass);
+      color: #fff;
+      font-family: inherit;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+    }
+
+    .toolbar button.ghost {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.45);
+      color: #fff;
+    }
+
+    .submit-btn {
+      width: 100%;
+      margin-top: 0.55rem;
+      padding: 0.7rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .status {
+      display: none;
+      margin: 0.75rem auto 0;
+      max-width: 8.5in;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid var(--navy);
+      background: #eef3f8;
+      color: var(--navy-deep);
+      font-size: 0.85rem;
+    }
+
+    .status.show { display: block; }
+    .status.error {
+      border-color: #8b2e2e;
+      background: #f8eeee;
+      color: #5c1d1d;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar, .status, .submit-btn, .web-only { display: none !important; }
+      .sheet {
+        margin: 0;
+        border: none;
+        width: auto;
+        min-height: auto;
+        padding: 0;
+      }
+      .pkg, .pay-box, .sum-box, .qty, .line {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .sheet { margin: 0; border: none; padding: 1rem; }
+      header, .fields, .packages, .totals, .sig {
+        grid-template-columns: 1fr;
+      }
+      .form-meta { text-align: left; }
+      .brand { font-size: 1.45rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="submit" form="order-form">Submit order</button>
+    <button type="button" class="ghost" onclick="window.print()">Print</button>
+    <button type="button" class="ghost" onclick="clearForm()">Clear</button>
+  </div>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+
+  <form class="sheet" id="order-form" autocomplete="on">
+    <header>
+      <div>
+        <div class="brand">
+          <span>Photo Order Form</span>
+          Glendale Highschool Marching Band
+        </div>
+      </div>
+      <div class="form-meta">
+        <strong>Student portraits</strong>
+        <span class="web-only">Submit online below<br /></span>
+        Or print &amp; return with payment<br />
+        One form per student
+      </div>
+    </header>
+
+    <section>
+      <h2>Student</h2>
+      <div class="fields">
+        <div class="field">
+          <label class="caption" for="student">Student name</label>
+          <input class="line" id="student" name="student" type="text" required />
+        </div>
+        <div class="field">
+          <label class="caption" for="grade">Grade</label>
+          <input class="line" id="grade" name="grade" type="text" />
+        </div>
+        <div class="field">
+          <label class="caption" for="instrument">Instrument / section</label>
+          <input class="line" id="instrument" name="instrument" type="text" />
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Choose one package</h2>
+      <div class="packages" role="radiogroup" aria-label="Photo package">
+        <label class="pkg">
+          <input type="radio" name="package" value="Digital Rights — $20" data-price="20" required />
+          <div class="pkg-body">
+            <h3>1 · Digital Rights</h3>
+            <ul>
+              <li>High-resolution digital file</li>
+              <li>Personal print rights</li>
+            </ul>
+          </div>
+          <div class="pkg-price">$20</div>
+        </label>
+
+        <label class="pkg">
+          <input type="radio" name="package" value="Keepsake — $35" data-price="35" />
+          <div class="pkg-body">
+            <h3>2 · Keepsake</h3>
+            <ul>
+              <li>2 — 5×7 prints</li>
+              <li>4 — 4×6 prints</li>
+              <li>8 wallets</li>
+              <li>Prints only</li>
+            </ul>
+          </div>
+          <div class="pkg-price">$35</div>
+        </label>
+
+        <label class="pkg featured">
+          <input type="radio" name="package" value="Showcase — $60" data-price="60" />
+          <div class="pkg-body">
+            <h3>3 · Showcase <span class="badge">Best value</span></h3>
+            <ul>
+              <li>Digital rights included</li>
+              <li>1 — 8×10</li>
+              <li>2 — 5×7s · 4 — 4×6s · 8 wallets</li>
+            </ul>
+          </div>
+          <div class="pkg-price">$60</div>
+        </label>
+
+        <label class="pkg">
+          <input type="radio" name="package" value="All-Star — $95" data-price="95" />
+          <div class="pkg-body">
+            <h3>4 · All-Star</h3>
+            <ul>
+              <li>Digital rights included</li>
+              <li>1 — 16×20 wall print</li>
+              <li>2 — 8×10s · 2 — 5×7s</li>
+              <li>8 — 4×6s · 16 wallets</li>
+            </ul>
+          </div>
+          <div class="pkg-price">$95</div>
+        </label>
+      </div>
+      <p class="note">Digital rights = full-resolution file for personal printing and sharing. Not for resale.</p>
+    </section>
+
+    <section>
+      <h2>Add-ons <span style="font-family:'Source Sans 3',sans-serif;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(optional — enter quantity)</span></h2>
+      <table class="addons">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="num">Each</th>
+            <th class="center">Qty</th>
+            <th class="num">Line</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Extra 8×10</td>
+            <td class="num">$12</td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="12" data-label="Extra 8x10" name="addon_810" /></td>
+            <td class="num line-total">$0</td>
+          </tr>
+          <tr>
+            <td>Extra 5×7</td>
+            <td class="num">$6</td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 5x7" name="addon_57" /></td>
+            <td class="num line-total">$0</td>
+          </tr>
+          <tr>
+            <td>Extra 4×6</td>
+            <td class="num">$3</td>
+            <td class="center"><input class="qty" type="number" min="0" max="40" value="" data-price="3" data-label="Extra 4x6" name="addon_46" /></td>
+            <td class="num line-total">$0</td>
+          </tr>
+          <tr>
+            <td>Extra sheet of 8 wallets</td>
+            <td class="num">$6</td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 8 wallets" name="addon_wallets" /></td>
+            <td class="num line-total">$0</td>
+          </tr>
+          <tr>
+            <td>Extra 16×20</td>
+            <td class="num">$45</td>
+            <td class="center"><input class="qty" type="number" min="0" max="10" value="" data-price="45" data-label="Extra 16x20" name="addon_1620" /></td>
+            <td class="num line-total">$0</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="totals">
+      <div class="pay-box">
+        <h2>Parent / payment</h2>
+        <div class="fields" style="grid-template-columns: 1fr 1fr;">
+          <div class="field">
+            <label class="caption" for="parent">Parent / guardian name</label>
+            <input class="line" id="parent" name="parent" type="text" required />
+          </div>
+          <div class="field">
+            <label class="caption" for="phone">Phone</label>
+            <input class="line" id="phone" name="phone" type="tel" required />
+          </div>
+          <div class="field wide">
+            <label class="caption" for="email">Email</label>
+            <input class="line" id="email" name="email" type="email" required />
+          </div>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" name="pay_cash" value="yes" /> Cash</label>
+          <label><input type="checkbox" name="pay_check" value="yes" /> Check</label>
+          <label><input type="checkbox" name="pay_other" value="yes" /> Other / pay later</label>
+          <label style="flex: 1; min-width: 8rem;">
+            Check # <input class="line" name="check_number" type="text" style="display:inline-block;width:5rem;min-height:1.2rem;" />
+          </label>
+        </div>
+        <div class="sig">
+          <div class="field">
+            <label class="caption" for="signature">Type full name as signature</label>
+            <input class="line" id="signature" name="signature" type="text" required />
+          </div>
+          <div class="field">
+            <label class="caption" for="date">Date</label>
+            <input class="line" id="date" name="date" type="date" required />
+          </div>
+        </div>
+      </div>
+
+      <div class="sum-box">
+        <h2>Order total</h2>
+        <div class="sum-rows">
+          <div class="sum-row">
+            <span>Package</span>
+            <div class="money">$<input class="line" id="pkg-total" name="pkg_total" type="text" readonly /></div>
+          </div>
+          <div class="sum-row">
+            <span>Add-ons</span>
+            <div class="money">$<input class="line" id="addon-total" name="addon_total" type="text" readonly /></div>
+          </div>
+          <div class="sum-row total">
+            <span>Total due</span>
+            <div class="money">$<input class="line" id="grand-total" name="grand_total" type="text" readonly /></div>
+          </div>
+        </div>
+        <button class="submit-btn web-only" type="submit">Submit order</button>
+        <p class="note" style="margin-top:0.55rem;">You’ll get a confirmation email. Pay cash/check to the photographer or as directed by band staff.</p>
+      </div>
+    </div>
+
+    <footer>
+      <span>Personal use only · Digital files may not be sold or used commercially</span>
+      <span>Questions? Contact your band director or photographer</span>
+    </footer>
+  </form>
+
+  <script src="config.js"></script>
+  <script>
+    const form = document.getElementById("order-form");
+    const pkgTotal = document.getElementById("pkg-total");
+    const addonTotal = document.getElementById("addon-total");
+    const grandTotal = document.getElementById("grand-total");
+    const statusEl = document.getElementById("status");
+
+    function money(n) {
+      return n.toFixed(2).replace(/\.00$/, "");
+    }
+
+    function showStatus(message, isError) {
+      statusEl.textContent = message;
+      statusEl.classList.add("show");
+      statusEl.classList.toggle("error", !!isError);
+      statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function addonSummary() {
+      const parts = [];
+      form.querySelectorAll(".qty").forEach((input) => {
+        const qty = Number(input.value) || 0;
+        if (qty > 0) parts.push(qty + " × " + input.dataset.label);
+      });
+      return parts.length ? parts.join(", ") : "None";
+    }
+
+    function paymentMethods() {
+      const methods = [];
+      if (form.pay_cash.checked) methods.push("Cash");
+      if (form.pay_check.checked) methods.push("Check");
+      if (form.pay_other.checked) methods.push("Other / pay later");
+      const checkNo = form.check_number.value.trim();
+      if (checkNo) methods.push("Check # " + checkNo);
+      return methods.length ? methods.join(", ") : "Not specified";
+    }
+
+    function recalc() {
+      const selected = form.querySelector('input[name="package"]:checked');
+      const pkg = selected ? Number(selected.dataset.price) : 0;
+      let addons = 0;
+
+      form.querySelectorAll(".qty").forEach((input) => {
+        const qty = Number(input.value) || 0;
+        const price = Number(input.dataset.price) || 0;
+        const line = qty * price;
+        addons += line;
+        input.closest("tr").querySelector(".line-total").textContent = "$" + money(line);
+      });
+
+      pkgTotal.value = pkg ? money(pkg) : "";
+      addonTotal.value = addons ? money(addons) : "";
+      grandTotal.value = pkg || addons ? money(pkg + addons) : "";
+    }
+
+    form.addEventListener("change", recalc);
+    form.addEventListener("input", recalc);
+
+    function clearForm() {
+      form.reset();
+      form.querySelectorAll(".line-total").forEach((el) => { el.textContent = "$0"; });
+      statusEl.classList.remove("show", "error");
+      recalc();
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      recalc();
+
+      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+      if (!orderEmail || orderEmail.includes("REPLACE")) {
+        showStatus("Online ordering isn’t connected yet. Please print this form or ask the photographer for the order email.", true);
+        return;
+      }
+
+      if (!form.reportValidity()) return;
+
+      const selected = form.querySelector('input[name="package"]:checked');
+      const submitButtons = document.querySelectorAll('button[type="submit"]');
+      submitButtons.forEach((btn) => { btn.disabled = true; });
+      showStatus("Sending your order…");
+
+      const payload = {
+        _subject: "Band photo order — " + form.student.value,
+        _template: "table",
+        _captcha: "false",
+        Student: form.student.value,
+        Grade: form.grade.value || "—",
+        Instrument: form.instrument.value || "—",
+        Package: selected ? selected.value : "",
+        Add_ons: addonSummary(),
+        Package_total: "$" + (pkgTotal.value || "0"),
+        Addon_total: "$" + (addonTotal.value || "0"),
+        Grand_total: "$" + (grandTotal.value || "0"),
+        Parent: form.parent.value,
+        Phone: form.phone.value,
+        Email: form.email.value,
+        Payment: paymentMethods(),
+        Signature: form.signature.value,
+        Date: form.date.value,
+      };
+
+      try {
+        const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.message || "Could not send order.");
+        }
+        window.location.href = "thanks.html";
+      } catch (err) {
+        showStatus("Something went wrong sending the order. Please print the form or try again. (" + err.message + ")", true);
+        submitButtons.forEach((btn) => { btn.disabled = false; });
+      }
+    });
+
+    if (!form.date.value) {
+      form.date.valueAsDate = new Date();
+    }
+    recalc();
+  </script>
+</body>
+</html>
