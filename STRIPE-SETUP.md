@@ -68,5 +68,11 @@ window.STRIPE_CHECKOUT_API_URL = "https://YOUR-PROJECT.vercel.app/api/create-che
 ## Security notes
 
 - Never put `sk_...` keys in `config.js`, HTML, or git.
-- Only `STRIPE_SECRET_KEY` belongs in Vercel environment variables.
+- Only `STRIPE_SECRET_KEY` belongs in Vercel environment variables (plus `ADMIN_TOKEN` and `BLOB_READ_WRITE_TOKEN` for the gallery — see **GALLERY-SETUP.md**).
 - `pk_...` publishable keys are safe in frontend code if you use them later.
+
+---
+
+## Photo gallery / Lightroom codes
+
+Per-student access codes map to Lightroom share URLs. See **[GALLERY-SETUP.md](GALLERY-SETUP.md)** for photographer workflow, env vars, and digital unlock behavior.

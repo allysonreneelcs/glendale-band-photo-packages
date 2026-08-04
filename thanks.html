@@ -94,6 +94,7 @@
     <p id="lead">Thanks — your photo order was submitted. The photographer will follow up about payment and delivery.</p>
     <dl class="summary" id="summary" hidden></dl>
     <p class="status-msg" id="notify" hidden></p>
+    <p id="gallery-link" hidden><a id="gallery-href" href="gallery.html">Open your photo gallery</a></p>
     <p><a href="index.html">Submit another order</a></p>
   </main>
 
@@ -102,16 +103,21 @@
     const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
     const params = new URLSearchParams(window.location.search);
     const paid = params.get("paid") === "1";
+    const digital = params.get("digital") === "1";
     const sessionId = (params.get("session_id") || "").trim();
+    const accessCode = (params.get("code") || "").trim();
     const title = document.getElementById("title");
     const lead = document.getElementById("lead");
     const summary = document.getElementById("summary");
     const notify = document.getElementById("notify");
+    const galleryLink = document.getElementById("gallery-link");
+    const galleryHref = document.getElementById("gallery-href");
 
     function renderSummary(order) {
       if (!order) return;
       const rows = [
         ["Student", order.Student],
+        ["Access code", order.Access_code],
         ["Package", order.Package],
         ["Add-ons", order.Add_ons],
         ["Total", order.Grand_total],
@@ -121,7 +127,7 @@
       ];
       summary.innerHTML = "";
       rows.forEach(([label, value]) => {
-        if (!value) return;
+        if (!value || value === "—") return;
         const dt = document.createElement("dt");
         dt.textContent = label;
         const dd = document.createElement("dd");
@@ -130,6 +136,12 @@
         summary.appendChild(dd);
       });
       summary.hidden = false;
+    }
+
+    function showGalleryLink(code) {
+      if (!code) return;
+      galleryHref.href = "gallery.html?code=" + encodeURIComponent(code);
+      galleryLink.hidden = false;
     }
 
     async function emailOrder(payload) {
@@ -151,6 +163,19 @@
       }
     }
 
+    async function verifyPayment(sessionId) {
+      const base = String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
+      if (!base || !sessionId) return null;
+      const response = await fetch(base + "/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Could not unlock gallery.");
+      return result;
+    }
+
     (async function init() {
       let order = null;
       try {
@@ -159,32 +184,55 @@
         order = null;
       }
 
+      if (accessCode) showGalleryLink(accessCode);
+      else if (order && order.Access_code && order.Access_code !== "—") showGalleryLink(order.Access_code);
+
       if (paid) {
-        title.textContent = "Payment received";
-        lead.textContent = "Thanks — your card payment went through and your photo order is on its way to the photographer.";
+        title.textContent = digital ? "Digital rights unlocked" : "Payment received";
+        lead.textContent = digital
+          ? "Thanks — digital rights are paid. Open your gallery, and the photographer will enable Lightroom downloads for your album."
+          : "Thanks — your card payment went through and your photo order is on its way to the photographer.";
+
+        if (sessionId) {
+          notify.hidden = false;
+          notify.textContent = "Confirming payment and gallery access…";
+          try {
+            const verified = await verifyPayment(sessionId);
+            if (verified && verified.unlocked) {
+              notify.textContent = "Gallery digital access is marked paid for code " + (verified.accessCode || "") + ".";
+              if (verified.accessCode) showGalleryLink(verified.accessCode);
+            } else if (verified && verified.includesDigital) {
+              notify.textContent = verified.reminder || "Payment recorded. If you have a gallery code, ask the photographer to link digital access.";
+            } else {
+              notify.textContent = "Payment recorded.";
+            }
+          } catch (err) {
+            notify.classList.add("error");
+            notify.textContent = "Payment succeeded, but gallery unlock didn’t confirm automatically. (" + err.message + ")";
+          }
+        }
+
         if (order) {
           order.Payment = "Paid online via Stripe" + (sessionId ? " · session " + sessionId : "");
           renderSummary(order);
-          notify.hidden = false;
-          notify.textContent = "Sending order details to the photographer…";
+          if (!notify.textContent) {
+            notify.hidden = false;
+            notify.textContent = "Sending order details to the photographer…";
+          }
           try {
             const sentKey = "bandPhotoOrderSent:" + (sessionId || order.Student + order.Grand_total);
-            if (!sessionStorage.getItem(sentKey)) {
+            if (!sessionStorage.getItem(sentKey) && !digital) {
               await emailOrder(order);
               sessionStorage.setItem(sentKey, "1");
+              notify.textContent = (notify.textContent ? notify.textContent + " " : "") + "Order details were emailed to the photographer.";
             }
-            notify.textContent = "Order details were emailed to the photographer.";
             sessionStorage.removeItem(ORDER_STORAGE_KEY);
           } catch (err) {
             notify.classList.add("error");
             notify.textContent = "Payment succeeded, but the order email didn’t send automatically. Please screenshot this page or email the photographer. (" + err.message + ")";
           }
-        } else {
+        } else if (!sessionId) {
           lead.textContent = "Thanks — your card payment went through. If you don’t hear back, contact the photographer and mention your Stripe payment.";
-          if (sessionId) {
-            notify.hidden = false;
-            notify.textContent = "Stripe session: " + sessionId;
-          }
         }
       } else {
         if (order) renderSummary(order);

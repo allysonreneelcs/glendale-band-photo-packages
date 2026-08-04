@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photo gallery — Glendale Band Photos</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #4a5568;
+      --rule: #c5ccd6;
+      --paper: #f7f4ef;
+      --brass: #b08d3e;
+      --navy: #1e3a5f;
+      --navy-deep: #13263f;
+      --ok: #1e5c3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 120% 80% at 0% 0%, rgba(30, 58, 95, 0.1), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 100% 0%, rgba(176, 141, 62, 0.12), transparent 45%),
+        var(--paper);
+    }
+    .wrap { width: min(920px, 100%); margin: 0 auto; padding: 1.25rem; }
+    .brand {
+      font-family: "Archivo Black", Impact, sans-serif;
+      text-transform: uppercase;
+      color: var(--navy-deep);
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      line-height: 0.95;
+      margin: 0 0 0.5rem;
+    }
+    .brand span {
+      display: block;
+      font-family: "Source Sans 3", sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: var(--brass);
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .lead { color: var(--muted); margin: 0 0 1rem; line-height: 1.5; max-width: 38rem; }
+    .panel {
+      background: #fff;
+      border: 1.5px solid var(--navy);
+      padding: 1.25rem 1.15rem;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    input {
+      width: 100%;
+      border: none;
+      border-bottom: 1.5px solid var(--ink);
+      background: transparent;
+      font: inherit;
+      font-size: 1.15rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.45rem 0.1rem;
+      margin-bottom: 0.85rem;
+    }
+    input:focus { outline: none; border-bottom-color: var(--brass); }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    button, .btn {
+      appearance: none;
+      display: inline-block;
+      border: 1.5px solid var(--navy);
+      background: var(--navy);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      padding: 0.55rem 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button.ghost, .btn.ghost {
+      background: transparent;
+      color: var(--navy);
+    }
+    .status { margin: 0.65rem 0 0; font-size: 0.9rem; color: var(--navy); }
+    .status.error { color: #5c1d1d; }
+    .hidden { display: none !important; }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      margin-bottom: 0.85rem;
+    }
+    .student-name {
+      font-family: "Archivo Black", Impact, sans-serif;
+      text-transform: uppercase;
+      font-size: 1.35rem;
+      color: var(--navy-deep);
+      margin: 0;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.45rem;
+      border: 1px solid currentColor;
+    }
+    .badge.paid { color: var(--ok); }
+    .badge.preview { color: #7a3e12; }
+    .note {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin: 0 0 0.85rem;
+    }
+    .viewer-shell {
+      position: relative;
+      border: 1px solid var(--rule);
+      background: #13263f;
+      min-height: 420px;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .viewer-shell.locked::after {
+      content: "PREVIEW · DIGITAL NOT PURCHASED";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      color: rgba(255, 255, 255, 0.28);
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: clamp(1rem, 3.5vw, 1.6rem);
+      letter-spacing: 0.12em;
+      text-align: center;
+      padding: 1rem;
+      background:
+        repeating-linear-gradient(
+          -18deg,
+          transparent 0 48px,
+          rgba(255, 255, 255, 0.035) 48px 50px
+        );
+    }
+    .viewer-shell iframe {
+      width: 100%;
+      height: min(70vh, 640px);
+      border: 0;
+      background: #fff;
+    }
+    .fallback {
+      padding: 2rem 1.25rem;
+      color: #fff;
+      text-align: center;
+    }
+    .fallback p { color: rgba(255,255,255,0.8); }
+    .buy-box {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--rule);
+    }
+    .buy-box h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      color: var(--navy-deep);
+    }
+    .links { margin-top: 1rem; font-size: 0.9rem; }
+    .links a { color: var(--navy); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 class="brand"><span>Student photo gallery</span> Glendale Highschool Marching Band</h1>
+      <p class="lead">Enter the access code from your photo slip to open this student’s Lightroom gallery. Screenshots on phones can’t be fully blocked — this page limits casual saving; Lightroom share settings control real downloads.</p>
+    </header>
+
+    <section class="panel" id="gate">
+      <form id="code-form">
+        <label for="code">Access code</label>
+        <input id="code" name="code" required placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" />
+        <div class="actions">
+          <button type="submit">Open gallery</button>
+          <a class="btn ghost" href="index.html">Order prints / packages</a>
+        </div>
+        <p class="status" id="gate-status" hidden></p>
+      </form>
+    </section>
+
+    <section class="panel hidden" id="gallery">
+      <div class="meta">
+        <h2 class="student-name" id="student-name">Student</h2>
+        <span class="badge" id="digital-badge">Preview</span>
+        <span class="note" id="code-label" style="margin:0"></span>
+      </div>
+      <p class="note" id="access-note"></p>
+      <div class="actions" style="margin-bottom:0.85rem">
+        <a class="btn" id="open-lr" href="#" target="_blank" rel="noopener">Open Lightroom gallery</a>
+        <button type="button" class="ghost" id="change-code">Enter a different code</button>
+      </div>
+      <div class="viewer-shell locked" id="viewer">
+        <div class="fallback" id="embed-fallback">
+          <p>Lightroom galleries often open best in their own window.</p>
+          <p>Use <strong>Open Lightroom gallery</strong> above.</p>
+        </div>
+        <iframe id="lr-frame" class="hidden" title="Lightroom gallery" referrerpolicy="no-referrer"></iframe>
+      </div>
+
+      <div class="buy-box hidden" id="buy-box">
+        <h3>Unlock digital downloads — $20</h3>
+        <p class="note">Digital Rights adds full-resolution personal use. After payment, we mark your code as paid. The photographer also turns on Lightroom’s “Allow JPG Downloads” for your album.</p>
+        <label for="email">Parent email (for receipt)</label>
+        <input id="email" type="email" placeholder="you@example.com" style="text-transform:none;letter-spacing:0" />
+        <div class="actions">
+          <button type="button" id="buy-digital">Pay $20 for Digital Rights</button>
+        </div>
+        <p class="status" id="buy-status" hidden></p>
+      </div>
+    </section>
+
+    <p class="links"><a href="index.html">Full order form</a> (prints &amp; packages)</p>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const gate = document.getElementById("gate");
+    const gallery = document.getElementById("gallery");
+    const gateStatus = document.getElementById("gate-status");
+    const buyStatus = document.getElementById("buy-status");
+    const viewer = document.getElementById("viewer");
+    const frame = document.getElementById("lr-frame");
+    const embedFallback = document.getElementById("embed-fallback");
+    const buyBox = document.getElementById("buy-box");
+    let current = null;
+
+    function apiBase() {
+      return String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
+    }
+
+    function setStatus(el, message, isError) {
+      el.hidden = !message;
+      el.textContent = message || "";
+      el.classList.toggle("error", Boolean(isError));
+    }
+
+    function normalizeCode(raw) {
+      const cleaned = String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (cleaned.startsWith("GLEN") && cleaned.length >= 8) return "GLEN-" + cleaned.slice(4, 8);
+      if (cleaned.length === 4) return "GLEN-" + cleaned;
+      return cleaned;
+    }
+
+    // Best-effort casual protection on our wrapper only (not Lightroom itself).
+    document.addEventListener("contextmenu", (e) => {
+      if (e.target.closest(".viewer-shell")) e.preventDefault();
+    });
+    document.addEventListener("dragstart", (e) => {
+      if (e.target.closest(".viewer-shell")) e.preventDefault();
+    });
+
+    function showStudent(student) {
+      current = student;
+      gate.classList.add("hidden");
+      gallery.classList.remove("hidden");
+      document.getElementById("student-name").textContent = student.studentName || "Student";
+      document.getElementById("code-label").textContent = student.code;
+      const badge = document.getElementById("digital-badge");
+      const openLr = document.getElementById("open-lr");
+      const note = document.getElementById("access-note");
+
+      if (!student.hasGallery || !student.lightroomGalleryUrl) {
+        note.textContent = "Photos are not linked yet. Please check back after the photographer finishes uploading.";
+        openLr.classList.add("hidden");
+        viewer.classList.add("hidden");
+        buyBox.classList.add("hidden");
+        return;
+      }
+
+      openLr.classList.remove("hidden");
+      openLr.href = student.lightroomGalleryUrl;
+      viewer.classList.remove("hidden");
+
+      if (student.digitalPaid) {
+        badge.textContent = "Digital unlocked";
+        badge.className = "badge paid";
+        viewer.classList.remove("locked");
+        note.textContent = "Digital rights are on for this code. Open Lightroom and use the gallery’s download menu if enabled. Screenshots on phones still can’t be fully blocked.";
+        buyBox.classList.add("hidden");
+      } else {
+        badge.textContent = "View only";
+        badge.className = "badge preview";
+        viewer.classList.add("locked");
+        note.textContent = "Preview access: browsing is OK. Downloads should stay off in Lightroom until Digital Rights (or Showcase / All-Star) is paid. True screenshot blocking isn’t possible on phones.";
+        buyBox.classList.remove("hidden");
+      }
+
+      // Try embed; many Lightroom share pages block iframes — keep the button as the reliable path.
+      frame.classList.add("hidden");
+      embedFallback.classList.remove("hidden");
+      try {
+        frame.src = student.lightroomGalleryUrl;
+        frame.onload = function () {
+          // If the iframe stays blank/blocked, fallback copy remains visible underneath visually;
+          // we still show the open button as primary.
+        };
+      } catch (_) {}
+    }
+
+    async function lookup(code) {
+      const base = apiBase();
+      if (!base) throw new Error("Gallery API isn’t configured yet (BAND_PHOTO_API_BASE).");
+      const res = await fetch(base + "/api/gallery?code=" + encodeURIComponent(code), {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not open gallery.");
+      return data.student;
+    }
+
+    document.getElementById("code-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const code = normalizeCode(document.getElementById("code").value);
+      document.getElementById("code").value = code;
+      setStatus(gateStatus, "Looking up…");
+      try {
+        const student = await lookup(code);
+        history.replaceState({}, "", "?code=" + encodeURIComponent(code));
+        showStudent(student);
+        setStatus(gateStatus, "");
+      } catch (err) {
+        setStatus(gateStatus, err.message, true);
+      }
+    });
+
+    document.getElementById("change-code").addEventListener("click", () => {
+      current = null;
+      gallery.classList.add("hidden");
+      gate.classList.remove("hidden");
+      frame.src = "about:blank";
+      history.replaceState({}, "", "gallery.html");
+    });
+
+    document.getElementById("buy-digital").addEventListener("click", async () => {
+      if (!current) return;
+      const email = document.getElementById("email").value.trim();
+      if (!email) {
+        setStatus(buyStatus, "Enter an email for your receipt.", true);
+        return;
+      }
+      const checkoutUrl = String(window.STRIPE_CHECKOUT_API_URL || "").trim();
+      if (!checkoutUrl || checkoutUrl.includes("REPLACE")) {
+        setStatus(buyStatus, "Online card payment isn’t set up yet. Use the order form or ask the photographer.", true);
+        return;
+      }
+      setStatus(buyStatus, "Redirecting to secure checkout…");
+      try {
+        const thanks = new URL("thanks.html", window.location.href).href;
+        const cancel = new URL("gallery.html", window.location.href);
+        cancel.searchParams.set("code", current.code);
+        cancel.searchParams.set("canceled", "1");
+        const res = await fetch(checkoutUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            packageKey: "digital",
+            digitalOnly: true,
+            accessCode: current.code,
+            student: current.studentName,
+            email,
+            successUrl: thanks + "?paid=1&digital=1&code=" + encodeURIComponent(current.code) + "&session_id={CHECKOUT_SESSION_ID}",
+            cancelUrl: cancel.href,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) throw new Error(data.error || "Could not start checkout.");
+        window.location.href = data.url;
+      } catch (err) {
+        setStatus(buyStatus, err.message, true);
+      }
+    });
+
+    (async function boot() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("canceled") === "1") {
+        setStatus(gateStatus, "Payment was canceled. You can try again anytime.", true);
+      }
+      const code = normalizeCode(params.get("code") || "");
+      if (code) {
+        document.getElementById("code").value = code;
+        try {
+          showStudent(await lookup(code));
+        } catch (err) {
+          setStatus(gateStatus, err.message, true);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

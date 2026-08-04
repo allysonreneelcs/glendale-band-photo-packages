@@ -426,6 +426,7 @@
     <button type="submit" form="order-form" id="toolbar-submit">Pay &amp; submit</button>
     <button type="button" class="ghost" onclick="window.print()">Print</button>
     <button type="button" class="ghost" onclick="clearForm()">Clear</button>
+    <a class="ghost web-only" href="gallery.html" style="display:inline-block;padding:0.45rem 0.75rem;border:1.5px solid var(--navy);color:var(--navy);text-decoration:none;font-weight:700">Photo gallery</a>
   </div>
 
   <div id="status" class="status" role="status" aria-live="polite"></div>
@@ -461,7 +462,12 @@
           <label class="caption" for="instrument">Instrument / section</label>
           <input class="line" id="instrument" name="instrument" type="text" />
         </div>
+        <div class="field wide web-only">
+          <label class="caption" for="access_code">Photo access code <span style="font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(optional — from gallery slip, e.g. GLEN-7K2M)</span></label>
+          <input class="line" id="access_code" name="access_code" type="text" placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.06em" />
+        </div>
       </div>
+      <p class="note web-only">Have a code already? <a href="gallery.html">Open the photo gallery</a> to view Lightroom photos. Adding the code here links a digital package payment to that student’s downloads.</p>
     </section>
 
     <section>
@@ -732,6 +738,7 @@
         Student: form.student.value,
         Grade: form.grade.value || "—",
         Instrument: form.instrument.value || "—",
+        Access_code: (form.access_code && form.access_code.value.trim()) || "—",
         Package: selected ? selected.value : "",
         Add_ons: addonSummary(),
         Package_total: "$" + (pkgTotal.value || "0"),
@@ -821,6 +828,7 @@
           email: form.email.value,
           signature: form.signature.value,
           date: form.date.value,
+          accessCode: (form.access_code && form.access_code.value.trim()) || "",
           addons: addonQuantities(),
           successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
           cancelUrl: cancelUrl,

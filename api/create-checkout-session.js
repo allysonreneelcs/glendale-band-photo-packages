@@ -3,28 +3,11 @@
  *
  * Env vars (set in Vercel project settings — never commit these):
  *   STRIPE_SECRET_KEY  — sk_test_... or sk_live_...
- *
- * Optional:
- *   SITE_ORIGIN — e.g. https://allysonreneelcs.github.io
- *                 (used only if success/cancel URLs are relative and Origin is missing)
  */
 
 const Stripe = require("stripe");
-
-const PACKAGES = {
-  digital: { name: "Digital Rights", unitAmount: 2000 },
-  keepsake: { name: "Keepsake", unitAmount: 3500 },
-  showcase: { name: "Showcase", unitAmount: 6000 },
-  allstar: { name: "All-Star", unitAmount: 9500 },
-};
-
-const ADDONS = {
-  addon_810: { name: "Extra 8×10", unitAmount: 1200 },
-  addon_57: { name: "Extra 5×7", unitAmount: 600 },
-  addon_46: { name: "Extra 4×6", unitAmount: 300 },
-  addon_wallets: { name: "Extra sheet of 8 wallets", unitAmount: 600 },
-  addon_1620: { name: "Extra 16×20", unitAmount: 4500 },
-};
+const { PACKAGES, ADDONS, packageIncludesDigital } = require("../lib/packages");
+const { formatCode } = require("../lib/codes");
 
 function corsHeaders(origin) {
   return {
@@ -89,20 +72,40 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const student = truncate(body.student, 80);
-  const parent = truncate(body.parent, 80);
+  const accessCodeRaw = truncate(body.accessCode, 20);
+  const accessCode = accessCodeRaw ? formatCode(accessCodeRaw) : "";
+  if (accessCodeRaw && !/^GLEN-[A-Z0-9]{4}$/.test(accessCode)) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Access code looks invalid. Use the format GLEN-7K2M." }));
+    return;
+  }
+
+  // Gallery "buy digital" flow can send minimal contact fields.
+  const digitalOnly = Boolean(body.digitalOnly) || packageKey === "digital";
+  const student = truncate(body.student, 80) || (accessCode ? `Access code ${accessCode}` : "");
+  const parent = truncate(body.parent, 80) || (digitalOnly ? "Gallery digital unlock" : "");
   const email = truncate(body.email, 120);
-  const phone = truncate(body.phone, 40);
+  const phone = truncate(body.phone, 40) || (digitalOnly ? "—" : "");
   const grade = truncate(body.grade, 40);
   const instrument = truncate(body.instrument, 80);
-  const signature = truncate(body.signature, 80);
-  const date = truncate(body.date, 40);
+  const signature = truncate(body.signature, 80) || (digitalOnly ? parent || "Gallery" : "");
+  const date = truncate(body.date, 40) || new Date().toISOString().slice(0, 10);
   const successUrl = truncate(body.successUrl, 500);
   const cancelUrl = truncate(body.cancelUrl, 500);
 
-  if (!student || !parent || !email || !phone || !signature || !date) {
+  if (!email) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Email is required." }));
+    return;
+  }
+  if (!digitalOnly && (!student || !parent || !phone || !signature || !date)) {
     res.writeHead(400, { ...headers, "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Missing required order fields." }));
+    return;
+  }
+  if (digitalOnly && packageKey === "digital" && !accessCode) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Access code is required to unlock digital rights for a gallery." }));
     return;
   }
   if (!successUrl || !cancelUrl || !/^https?:\/\//i.test(successUrl) || !/^https?:\/\//i.test(cancelUrl)) {
@@ -117,7 +120,7 @@ module.exports = async function handler(req, res) {
         currency: "usd",
         product_data: {
           name: `Band photo package: ${pkg.name}`,
-          description: `Student: ${student}`,
+          description: accessCode ? `Student access code: ${accessCode}` : `Student: ${student}`,
         },
         unit_amount: pkg.unitAmount,
       },
@@ -127,21 +130,24 @@ module.exports = async function handler(req, res) {
 
   const addonParts = [];
   const addons = body.addons && typeof body.addons === "object" ? body.addons : {};
-  for (const [key, info] of Object.entries(ADDONS)) {
-    const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
-    if (qty > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "usd",
-          product_data: { name: info.name },
-          unit_amount: info.unitAmount,
-        },
-        quantity: qty,
-      });
-      addonParts.push(`${qty} × ${info.name}`);
+  if (!digitalOnly) {
+    for (const [key, info] of Object.entries(ADDONS)) {
+      const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
+      if (qty > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "usd",
+            product_data: { name: info.name },
+            unit_amount: info.unitAmount,
+          },
+          quantity: qty,
+        });
+        addonParts.push(`${qty} × ${info.name}`);
+      }
     }
   }
 
+  const includesDigital = packageIncludesDigital(packageKey);
   const stripe = new Stripe(secret);
 
   try {
@@ -162,15 +168,17 @@ module.exports = async function handler(req, res) {
         instrument: instrument || "—",
         package: pkg.name,
         packageKey,
+        includesDigital: includesDigital ? "1" : "0",
+        accessCode: accessCode || "",
         addons: addonParts.length ? addonParts.join(", ").slice(0, 450) : "None",
         signature,
         date,
         source: "glendale-band-photo-order",
       },
       payment_intent_data: {
-        description: `Glendale band photo — ${student} — ${pkg.name}`,
-        // Ensures Stripe can email a receipt to the parent (also enable
-        // Settings → Customer emails → successful payments in the Dashboard).
+        description: accessCode
+          ? `Glendale band photo — ${accessCode} — ${pkg.name}`
+          : `Glendale band photo — ${student} — ${pkg.name}`,
         receipt_email: email,
       },
     });
