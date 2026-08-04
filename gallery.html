@@ -30,7 +30,7 @@
         radial-gradient(ellipse 90% 70% at 100% 0%, rgba(176, 141, 62, 0.12), transparent 45%),
         var(--paper);
     }
-    .wrap { width: min(920px, 100%); margin: 0 auto; padding: 1.25rem; }
+    .wrap { width: min(1100px, 100%); margin: 0 auto; padding: 1.25rem; }
     .brand {
       font-family: "Archivo Black", Impact, sans-serif;
       text-transform: uppercase;
@@ -48,7 +48,7 @@
       font-weight: 700;
       margin-bottom: 0.35rem;
     }
-    .lead { color: var(--muted); margin: 0 0 1rem; line-height: 1.5; max-width: 38rem; }
+    .lead { color: var(--muted); margin: 0 0 1rem; line-height: 1.5; max-width: 40rem; }
     .panel {
       background: #fff;
       border: 1.5px solid var(--navy);
@@ -86,13 +86,21 @@
       color: #fff;
       font: inherit;
       font-weight: 700;
-      padding: 0.55rem 0.95rem;
+      padding: 0.7rem 1.15rem;
       cursor: pointer;
       text-decoration: none;
+      font-size: 1rem;
     }
     button.ghost, .btn.ghost {
       background: transparent;
       color: var(--navy);
+    }
+    button.large {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .status { margin: 0.65rem 0 0; font-size: 0.9rem; color: var(--navy); }
     .status.error { color: #5c1d1d; }
@@ -107,7 +115,7 @@
     .student-name {
       font-family: "Archivo Black", Impact, sans-serif;
       text-transform: uppercase;
-      font-size: 1.35rem;
+      font-size: 1.5rem;
       color: var(--navy-deep);
       margin: 0;
     }
@@ -127,47 +135,94 @@
       line-height: 1.45;
       margin: 0 0 0.85rem;
     }
-    .viewer-shell {
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.65rem;
+      margin: 0.85rem 0 1rem;
+    }
+    .thumb {
       position: relative;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
       border: 1px solid var(--rule);
       background: #13263f;
-      min-height: 420px;
-      overflow: hidden;
+      padding: 0;
+      cursor: zoom-in;
+    }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+    .thumb.locked::after {
+      content: "PREVIEW";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      color: rgba(255,255,255,0.45);
+      font-family: "Archivo Black", Impact, sans-serif;
+      letter-spacing: 0.14em;
+      font-size: 0.85rem;
+      background:
+        repeating-linear-gradient(-18deg, transparent 0 28px, rgba(255,255,255,0.05) 28px 30px);
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(10, 16, 28, 0.92);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+    .lightbox.hidden { display: none !important; }
+    .lightbox-inner {
+      position: relative;
+      width: min(920px, 100%);
+      max-height: 90vh;
       user-select: none;
       -webkit-user-select: none;
     }
-    .viewer-shell.locked::after {
+    .lightbox-inner img {
+      width: 100%;
+      max-height: 78vh;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+    .lightbox-inner.locked::after {
       content: "PREVIEW · DIGITAL NOT PURCHASED";
       position: absolute;
       inset: 0;
       display: grid;
       place-items: center;
       pointer-events: none;
-      color: rgba(255, 255, 255, 0.28);
+      color: rgba(255, 255, 255, 0.35);
       font-family: "Archivo Black", Impact, sans-serif;
-      font-size: clamp(1rem, 3.5vw, 1.6rem);
+      font-size: clamp(1rem, 3.5vw, 1.7rem);
       letter-spacing: 0.12em;
       text-align: center;
       padding: 1rem;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.45);
       background:
-        repeating-linear-gradient(
-          -18deg,
-          transparent 0 48px,
-          rgba(255, 255, 255, 0.035) 48px 50px
-        );
+        repeating-linear-gradient(-18deg, transparent 0 48px, rgba(255, 255, 255, 0.04) 48px 50px);
     }
-    .viewer-shell iframe {
-      width: 100%;
-      height: min(70vh, 640px);
-      border: 0;
-      background: #fff;
+    .lightbox-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 0.85rem;
     }
-    .fallback {
-      padding: 2rem 1.25rem;
-      color: #fff;
-      text-align: center;
-    }
-    .fallback p { color: rgba(255,255,255,0.8); }
     .buy-box {
       margin-top: 1rem;
       padding-top: 1rem;
@@ -175,18 +230,24 @@
     }
     .buy-box h3 {
       margin: 0 0 0.35rem;
-      font-size: 1rem;
+      font-size: 1.05rem;
       color: var(--navy-deep);
     }
     .links { margin-top: 1rem; font-size: 0.9rem; }
     .links a { color: var(--navy); font-weight: 700; }
+    .empty {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--rule);
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1 class="brand"><span>Student photo gallery</span> Glendale Highschool Marching Band</h1>
-      <p class="lead">Enter the access code from your photo slip to open this student’s Lightroom gallery. Screenshots on phones can’t be fully blocked — this page limits casual saving; Lightroom share settings control real downloads.</p>
+      <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Unpaid previews are watermarked. Downloads unlock after Digital Rights are paid.</p>
     </header>
 
     <section class="panel" id="gate">
@@ -194,7 +255,9 @@
         <label for="code">Access code</label>
         <input id="code" name="code" required placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" />
         <div class="actions">
-          <button type="submit">Open gallery</button>
+          <button type="submit" class="large">View photos</button>
+        </div>
+        <div class="actions" style="margin-top:0.65rem">
           <a class="btn ghost" href="index.html">Order prints / packages</a>
         </div>
         <p class="status" id="gate-status" hidden></p>
@@ -209,24 +272,20 @@
       </div>
       <p class="note" id="access-note"></p>
       <div class="actions" style="margin-bottom:0.85rem">
-        <a class="btn" id="open-lr" href="#" target="_blank" rel="noopener">Open Lightroom gallery</a>
         <button type="button" class="ghost" id="change-code">Enter a different code</button>
+        <button type="button" class="hidden" id="download-all">Download all photos</button>
       </div>
-      <div class="viewer-shell locked" id="viewer">
-        <div class="fallback" id="embed-fallback">
-          <p>Lightroom galleries often open best in their own window.</p>
-          <p>Use <strong>Open Lightroom gallery</strong> above.</p>
-        </div>
-        <iframe id="lr-frame" class="hidden" title="Lightroom gallery" referrerpolicy="no-referrer"></iframe>
-      </div>
+
+      <div id="photo-grid" class="grid" aria-live="polite"></div>
+      <div id="empty-photos" class="empty hidden">Photos are not uploaded yet. Please check back soon.</div>
 
       <div class="buy-box hidden" id="buy-box">
         <h3>Unlock digital downloads — $20</h3>
-        <p class="note">Digital Rights adds full-resolution personal use. After payment, we mark your code as paid. The photographer also turns on Lightroom’s “Allow JPG Downloads” for your album.</p>
+        <p class="note">Digital Rights turns on downloads of these photos for personal use. Preview viewing stays on this page either way.</p>
         <label for="email">Parent email (for receipt)</label>
         <input id="email" type="email" placeholder="you@example.com" style="text-transform:none;letter-spacing:0" />
         <div class="actions">
-          <button type="button" id="buy-digital">Pay $20 for Digital Rights</button>
+          <button type="button" id="buy-digital" class="large">Pay $20 for Digital Rights</button>
         </div>
         <p class="status" id="buy-status" hidden></p>
       </div>
@@ -235,20 +294,40 @@
     <p class="links"><a href="index.html">Full order form</a> (prints &amp; packages)</p>
   </div>
 
+  <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo preview">
+    <div class="lightbox-inner locked" id="lightbox-inner">
+      <img id="lightbox-img" alt="Student photo preview" />
+      <div class="lightbox-bar">
+        <button type="button" class="ghost" id="lightbox-close">Close</button>
+        <button type="button" class="hidden" id="lightbox-download">Download this photo</button>
+      </div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script>
     const gate = document.getElementById("gate");
     const gallery = document.getElementById("gallery");
     const gateStatus = document.getElementById("gate-status");
     const buyStatus = document.getElementById("buy-status");
-    const viewer = document.getElementById("viewer");
-    const frame = document.getElementById("lr-frame");
-    const embedFallback = document.getElementById("embed-fallback");
     const buyBox = document.getElementById("buy-box");
+    const photoGrid = document.getElementById("photo-grid");
+    const emptyPhotos = document.getElementById("empty-photos");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxInner = document.getElementById("lightbox-inner");
+    const lightboxImg = document.getElementById("lightbox-img");
+    const downloadAllBtn = document.getElementById("download-all");
+    const lightboxDownload = document.getElementById("lightbox-download");
     let current = null;
+    let activePhotoId = null;
 
     function apiBase() {
       return String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
+    }
+
+    function photoUrl(code, id, download) {
+      const u = apiBase() + "/api/photo?code=" + encodeURIComponent(code) + "&id=" + encodeURIComponent(id);
+      return download ? u + "&download=1" : u;
     }
 
     function setStatus(el, message, isError) {
@@ -264,13 +343,52 @@
       return cleaned;
     }
 
-    // Best-effort casual protection on our wrapper only (not Lightroom itself).
+    // Best-effort: block casual save paths. Cannot fully stop OS screenshots.
     document.addEventListener("contextmenu", (e) => {
-      if (e.target.closest(".viewer-shell")) e.preventDefault();
+      if (e.target.closest("#photo-grid, #lightbox, .thumb, .lightbox-inner")) e.preventDefault();
     });
     document.addEventListener("dragstart", (e) => {
-      if (e.target.closest(".viewer-shell")) e.preventDefault();
+      if (e.target.closest("#photo-grid, #lightbox")) e.preventDefault();
     });
+    document.addEventListener("keydown", (e) => {
+      if (!current || current.digitalPaid) return;
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && (key === "s" || key === "p")) e.preventDefault();
+    });
+
+    function renderPhotos(student) {
+      const photos = student.photos || [];
+      photoGrid.innerHTML = "";
+      emptyPhotos.classList.toggle("hidden", photos.length > 0);
+      photos.forEach((p) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "thumb" + (student.digitalPaid ? "" : " locked");
+        btn.setAttribute("aria-label", "Open photo");
+        const img = document.createElement("img");
+        img.src = photoUrl(student.code, p.id, false);
+        img.alt = student.studentName + " photo";
+        img.loading = "lazy";
+        btn.appendChild(img);
+        btn.addEventListener("click", () => openLightbox(p.id));
+        photoGrid.appendChild(btn);
+      });
+    }
+
+    function openLightbox(photoId) {
+      if (!current) return;
+      activePhotoId = photoId;
+      lightboxImg.src = photoUrl(current.code, photoId, false);
+      lightboxInner.classList.toggle("locked", !current.digitalPaid);
+      lightboxDownload.classList.toggle("hidden", !current.digitalPaid);
+      lightbox.classList.remove("hidden");
+    }
+
+    function closeLightbox() {
+      lightbox.classList.add("hidden");
+      lightboxImg.src = "";
+      activePhotoId = null;
+    }
 
     function showStudent(student) {
       current = student;
@@ -279,45 +397,30 @@
       document.getElementById("student-name").textContent = student.studentName || "Student";
       document.getElementById("code-label").textContent = student.code;
       const badge = document.getElementById("digital-badge");
-      const openLr = document.getElementById("open-lr");
       const note = document.getElementById("access-note");
 
-      if (!student.hasGallery || !student.lightroomGalleryUrl) {
-        note.textContent = "Photos are not linked yet. Please check back after the photographer finishes uploading.";
-        openLr.classList.add("hidden");
-        viewer.classList.add("hidden");
+      if (!(student.photos && student.photos.length)) {
+        note.textContent = "This code is active, but photos have not been uploaded yet.";
         buyBox.classList.add("hidden");
+        downloadAllBtn.classList.add("hidden");
+        renderPhotos(student);
         return;
       }
-
-      openLr.classList.remove("hidden");
-      openLr.href = student.lightroomGalleryUrl;
-      viewer.classList.remove("hidden");
 
       if (student.digitalPaid) {
         badge.textContent = "Digital unlocked";
         badge.className = "badge paid";
-        viewer.classList.remove("locked");
-        note.textContent = "Digital rights are on for this code. Open Lightroom and use the gallery’s download menu if enabled. Screenshots on phones still can’t be fully blocked.";
+        note.textContent = "Digital rights are on. You can download photos below. Please don’t reshare full-resolution files publicly.";
         buyBox.classList.add("hidden");
+        downloadAllBtn.classList.remove("hidden");
       } else {
         badge.textContent = "View only";
         badge.className = "badge preview";
-        viewer.classList.add("locked");
-        note.textContent = "Preview access: browsing is OK. Downloads should stay off in Lightroom until Digital Rights (or Showcase / All-Star) is paid. True screenshot blocking isn’t possible on phones.";
+        note.textContent = "Preview gallery with watermarks. Screenshots can’t be fully blocked by any website, so unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads.";
         buyBox.classList.remove("hidden");
+        downloadAllBtn.classList.add("hidden");
       }
-
-      // Try embed; many Lightroom share pages block iframes — keep the button as the reliable path.
-      frame.classList.add("hidden");
-      embedFallback.classList.remove("hidden");
-      try {
-        frame.src = student.lightroomGalleryUrl;
-        frame.onload = function () {
-          // If the iframe stays blank/blocked, fallback copy remains visible underneath visually;
-          // we still show the open button as primary.
-        };
-      } catch (_) {}
+      renderPhotos(student);
     }
 
     async function lookup(code) {
@@ -348,10 +451,36 @@
 
     document.getElementById("change-code").addEventListener("click", () => {
       current = null;
+      closeLightbox();
       gallery.classList.add("hidden");
       gate.classList.remove("hidden");
-      frame.src = "about:blank";
       history.replaceState({}, "", "gallery.html");
+    });
+
+    document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeLightbox();
+    });
+
+    lightboxDownload.addEventListener("click", () => {
+      if (!current || !current.digitalPaid || !activePhotoId) return;
+      window.location.href = photoUrl(current.code, activePhotoId, true);
+    });
+
+    downloadAllBtn.addEventListener("click", async () => {
+      if (!current || !current.digitalPaid) return;
+      for (const p of current.photos || []) {
+        const a = document.createElement("a");
+        a.href = photoUrl(current.code, p.id, true);
+        a.download = p.filename || "photo.jpg";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        await new Promise((r) => setTimeout(r, 350));
+      }
     });
 
     document.getElementById("buy-digital").addEventListener("click", async () => {

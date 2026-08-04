@@ -26,10 +26,10 @@ module.exports = async function handler(req, res) {
       return;
     }
     sendJson(res, 200, headers, {
-      student: publicStudent(student, { includeUrl: true }),
+      student: publicStudent(student, { includeUrl: false }),
       tip: student.digitalPaid
-        ? "Digital rights are unlocked. Use the Lightroom gallery download option if the photographer enabled it."
-        : "Viewing is available. Downloads stay locked until digital rights are paid (and enabled in Lightroom).",
+        ? "Digital rights are unlocked. You can download photos from this page."
+        : "Preview gallery is on this page with watermarks. Pay for Digital Rights to unlock downloads.",
     });
   } catch (err) {
     console.error("gallery lookup error:", err.message);

@@ -188,7 +188,7 @@
   <div class="wrap">
     <header class="no-print">
       <h1 class="brand"><span>Photographer admin</span> Glendale Band Photos</h1>
-      <p class="help">Create student access codes, paste each student’s Lightroom share URL, mark digital paid, and print code slips.</p>
+      <p class="help">Create student access codes, upload that student’s photos (exported from Lightroom), mark digital paid, and print code slips. Parents view photos on the gallery page — they do not open Lightroom.</p>
       <p class="muted"><a href="gallery.html">Parent gallery</a> · <a href="index.html">Order form</a> · <a href="GALLERY-SETUP.md">Setup notes</a></p>
     </header>
 
@@ -206,7 +206,7 @@
     <div id="app" class="hidden">
       <section class="panel no-print">
         <h2>Add student + generate code</h2>
-        <p class="help">In Lightroom: sync/share one album per student → copy the “Anyone can view” share link → paste below. Leave downloads <strong>off</strong> until digital is paid.</p>
+        <p class="help">Create a code first, then use <strong>Upload photos</strong> on that student row. Export JPEGs from Lightroom (under ~4MB each) and upload them here for the parent gallery.</p>
         <form id="create-form">
           <div class="row">
             <div>
@@ -224,12 +224,10 @@
               <input id="instrument" />
             </div>
             <div>
-              <label for="lightroomGalleryUrl">Lightroom gallery URL</label>
-              <input id="lightroomGalleryUrl" type="url" placeholder="https://lightroom.adobe.com/shares/…" />
+              <label for="notes">Notes (optional)</label>
+              <input id="notes" />
             </div>
           </div>
-          <label for="notes">Notes (optional)</label>
-          <input id="notes" />
           <div class="actions">
             <button type="submit">Create code</button>
             <button type="button" class="ghost" id="refresh-btn">Refresh list</button>
@@ -240,6 +238,18 @@
         </form>
       </section>
 
+      <section class="panel no-print hidden" id="upload-panel">
+        <h2>Upload photos — <span id="upload-student-label"></span></h2>
+        <p class="help">Select one or more JPEG/PNG/WebP files. Parents will see these on the gallery page with watermarks until digital is paid.</p>
+        <input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+        <div class="actions">
+          <button type="button" id="upload-btn">Upload selected photos</button>
+          <button type="button" class="ghost" id="upload-done-btn">Done</button>
+        </div>
+        <p class="status" id="upload-status" hidden></p>
+        <div id="upload-photo-list" class="muted" style="margin-top:0.75rem"></div>
+      </section>
+
       <section class="panel no-print">
         <h2>Students</h2>
         <div style="overflow-x:auto">
@@ -248,7 +258,7 @@
               <tr>
                 <th>Code</th>
                 <th>Student</th>
-                <th>Lightroom</th>
+                <th>Photos</th>
                 <th>Digital</th>
                 <th>Actions</th>
               </tr>
@@ -278,7 +288,11 @@
     const createStatus = document.getElementById("create-status");
     const rows = document.getElementById("student-rows");
     const slips = document.getElementById("slips");
+    const uploadPanel = document.getElementById("upload-panel");
+    const uploadStatus = document.getElementById("upload-status");
+    const uploadPhotoList = document.getElementById("upload-photo-list");
     let students = [];
+    let uploadCode = "";
 
     function apiBase() {
       return String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
@@ -314,6 +328,45 @@
       app.classList.toggle("hidden", !unlocked);
     }
 
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Could not read " + file.name));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderUploadList(student) {
+      const photos = (student && student.photos) || [];
+      if (!photos.length) {
+        uploadPhotoList.innerHTML = '<p class="muted">No photos uploaded yet.</p>';
+        return;
+      }
+      uploadPhotoList.innerHTML = photos.map((p) => (
+        '<div style="display:flex;gap:0.5rem;align-items:center;margin:0.35rem 0">' +
+          '<span>' + escapeHtml(p.filename) + '</span>' +
+          '<button type="button" class="ghost" data-del-photo="' + escapeAttr(p.id) + '">Remove</button>' +
+        "</div>"
+      )).join("");
+    }
+
+    async function openUpload(code) {
+      uploadCode = code;
+      const student = students.find((s) => s.code === code);
+      document.getElementById("upload-student-label").textContent =
+        (student ? student.studentName + " · " : "") + code;
+      uploadPanel.classList.remove("hidden");
+      setStatus(uploadStatus, "");
+      try {
+        const data = await api("/api/admin/photos?code=" + encodeURIComponent(code));
+        renderUploadList(data.student);
+      } catch (err) {
+        setStatus(uploadStatus, err.message, true);
+      }
+      uploadPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     function render() {
       if (!students.length) {
         rows.innerHTML = '<tr><td colspan="5" class="muted">No students yet. Create a code above.</td></tr>';
@@ -322,9 +375,6 @@
       }
 
       rows.innerHTML = students.map((s) => {
-        const lr = s.lightroomGalleryUrl
-          ? '<a href="' + escapeAttr(s.lightroomGalleryUrl) + '" target="_blank" rel="noopener">Open</a>'
-          : '<span class="muted">Missing URL</span>';
         const badge = s.digitalPaid
           ? '<span class="badge paid">Paid</span>'
           : '<span class="badge unpaid">Locked</span>';
@@ -333,10 +383,10 @@
             '<td class="code">' + escapeHtml(s.code) + '</td>' +
             '<td><strong>' + escapeHtml(s.studentName) + '</strong><div class="muted">' +
               escapeHtml([s.grade, s.instrument].filter(Boolean).join(" · ")) + "</div></td>" +
-            "<td>" + lr + "</td>" +
+            "<td>" + (s.photoCount || 0) + "</td>" +
             "<td>" + badge + "</td>" +
             '<td class="actions" style="margin:0">' +
-              '<button type="button" class="ghost" data-act="edit-url">Paste LR URL</button>' +
+              '<button type="button" data-act="upload">Upload photos</button>' +
               '<button type="button" class="ghost" data-act="toggle-digital">' +
                 (s.digitalPaid ? "Mark unpaid" : "Mark digital paid") +
               "</button>" +
@@ -415,15 +465,71 @@
             studentName: document.getElementById("studentName").value,
             grade: document.getElementById("grade").value,
             instrument: document.getElementById("instrument").value,
-            lightroomGalleryUrl: document.getElementById("lightroomGalleryUrl").value,
             notes: document.getElementById("notes").value,
           }),
         });
         event.target.reset();
-        setStatus(createStatus, "Created " + data.student.code + " for " + data.student.studentName + ".", false);
+        setStatus(createStatus, "Created " + data.student.code + " for " + data.student.studentName + ". Next: Upload photos.", false);
         await refresh();
+        await openUpload(data.student.code);
       } catch (err) {
         setStatus(createStatus, err.message, true);
+      }
+    });
+
+    document.getElementById("upload-btn").addEventListener("click", async () => {
+      if (!uploadCode) return;
+      const input = document.getElementById("photo-files");
+      const files = Array.from(input.files || []);
+      if (!files.length) {
+        setStatus(uploadStatus, "Choose one or more photo files first.", true);
+        return;
+      }
+      setStatus(uploadStatus, "Uploading " + files.length + " photo(s)…");
+      try {
+        for (let i = 0; i < files.length; i += 1) {
+          const file = files[i];
+          setStatus(uploadStatus, "Uploading " + (i + 1) + " of " + files.length + ": " + file.name);
+          const dataUrl = await fileToBase64(file);
+          await api("/api/admin/photos?code=" + encodeURIComponent(uploadCode), {
+            method: "POST",
+            body: JSON.stringify({
+              code: uploadCode,
+              filename: file.name,
+              contentType: file.type || "image/jpeg",
+              data: dataUrl,
+            }),
+          });
+        }
+        input.value = "";
+        const data = await api("/api/admin/photos?code=" + encodeURIComponent(uploadCode));
+        renderUploadList(data.student);
+        setStatus(uploadStatus, "Uploaded. Parents can view these on the gallery page.", false);
+        await refresh();
+      } catch (err) {
+        setStatus(uploadStatus, err.message, true);
+      }
+    });
+
+    document.getElementById("upload-done-btn").addEventListener("click", () => {
+      uploadPanel.classList.add("hidden");
+      uploadCode = "";
+    });
+
+    uploadPhotoList.addEventListener("click", async (event) => {
+      const btn = event.target.closest("button[data-del-photo]");
+      if (!btn || !uploadCode) return;
+      const photoId = btn.getAttribute("data-del-photo");
+      if (!confirm("Remove this photo from the parent gallery?")) return;
+      try {
+        const data = await api("/api/admin/photos?code=" + encodeURIComponent(uploadCode), {
+          method: "DELETE",
+          body: JSON.stringify({ code: uploadCode, photoId }),
+        });
+        renderUploadList(data.student);
+        await refresh();
+      } catch (err) {
+        setStatus(uploadStatus, err.message, true);
       }
     });
 
@@ -436,31 +542,31 @@
       if (!student) return;
 
       try {
-        if (btn.dataset.act === "edit-url") {
-          const url = prompt("Paste Lightroom share URL for " + student.studentName, student.lightroomGalleryUrl || "");
-          if (url === null) return;
-          await api("/api/admin/student?code=" + encodeURIComponent(code), {
-            method: "PATCH",
-            body: JSON.stringify({ lightroomGalleryUrl: url.trim() }),
-          });
+        if (btn.dataset.act === "upload") {
+          await openUpload(code);
         } else if (btn.dataset.act === "toggle-digital") {
           const next = !student.digitalPaid;
           const tip = next
-            ? "Mark digital PAID for " + student.studentName + "?\n\nAlso turn ON “Allow JPG Downloads” in that student’s Lightroom Share settings."
-            : "Mark digital UNPAID for " + student.studentName + "?\n\nAlso turn OFF downloads in Lightroom.";
+            ? "Mark digital PAID for " + student.studentName + "? Parents will be able to download from the gallery."
+            : "Mark digital UNPAID for " + student.studentName + "?";
           if (!confirm(tip)) return;
           await api("/api/admin/student?code=" + encodeURIComponent(code), {
             method: "PATCH",
             body: JSON.stringify({ digitalPaid: next, digitalPaidVia: next ? "admin" : undefined }),
           });
+          await refresh();
         } else if (btn.dataset.act === "delete") {
           if (!confirm("Delete " + student.studentName + " (" + code + ")? This cannot be undone.")) return;
           await api("/api/admin/student?code=" + encodeURIComponent(code), {
             method: "DELETE",
             body: JSON.stringify({ code }),
           });
+          if (uploadCode === code) {
+            uploadPanel.classList.add("hidden");
+            uploadCode = "";
+          }
+          await refresh();
         }
-        await refresh();
       } catch (err) {
         alert(err.message);
       }
