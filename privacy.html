@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — Glendale Band Photos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #4a5568;
+      --rule: #c5ccd6;
+      --paper: #f7f4ef;
+      --brass: #b08d3e;
+      --navy: #1e3a5f;
+      --navy-deep: #13263f;
+      --ok: #1e5c3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 120% 80% at 0% 0%, rgba(30, 58, 95, 0.08), transparent 55%),
+        radial-gradient(ellipse 90% 70% at 100% 100%, rgba(176, 141, 62, 0.1), transparent 50%),
+        var(--paper);
+      min-height: 100vh;
+    }
+    .wrap {
+      width: min(42rem, 100%);
+      margin: 0 auto;
+      padding: 1.5rem 1.15rem 3rem;
+    }
+    .brand {
+      font-family: "Archivo Black", Impact, sans-serif;
+      text-transform: uppercase;
+      color: var(--navy-deep);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      line-height: 1;
+      margin: 0 0 0.35rem;
+    }
+    .brand span {
+      display: block;
+      font-family: "Source Sans 3", sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      color: var(--brass);
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    .nav {
+      margin: 0.75rem 0 1.25rem;
+      font-size: 0.9rem;
+    }
+    .nav a {
+      color: var(--navy);
+      font-weight: 700;
+      text-decoration: none;
+      margin-right: 0.85rem;
+    }
+    .nav a:hover { text-decoration: underline; }
+    .panel {
+      background: #fff;
+      border: 1.5px solid var(--navy);
+      padding: 1.35rem 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      margin: 0 0 0.85rem;
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--navy-deep);
+    }
+    h2 {
+      margin: 1.35rem 0 0.45rem;
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--navy);
+    }
+    p, li {
+      margin: 0 0 0.75rem;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.98rem;
+    }
+    ul { margin: 0 0 0.75rem; padding-left: 1.2rem; }
+    .highlight {
+      border-left: 3px solid var(--brass);
+      padding: 0.65rem 0.85rem;
+      margin: 1rem 0;
+      background: rgba(176, 141, 62, 0.08);
+      color: var(--ink);
+    }
+    .highlight p { color: var(--ink); margin: 0; font-weight: 600; }
+    .updated {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0 0 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+    input, textarea {
+      width: 100%;
+      border: none;
+      border-bottom: 1.5px solid var(--ink);
+      background: transparent;
+      font: inherit;
+      padding: 0.4rem 0.1rem;
+      margin-bottom: 0.85rem;
+      color: var(--ink);
+    }
+    textarea {
+      min-height: 6rem;
+      resize: vertical;
+      border: 1.5px solid var(--rule);
+      padding: 0.55rem 0.6rem;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--brass);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 560px) {
+      .row { grid-template-columns: 1fr; }
+    }
+    button {
+      appearance: none;
+      border: 1.5px solid var(--navy);
+      background: var(--navy);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      padding: 0.65rem 1.1rem;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .status {
+      margin: 0.75rem 0 0;
+      font-size: 0.92rem;
+      color: var(--navy);
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.error { color: #5c1d1d; }
+    .status.ok { color: var(--ok); }
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: -0.35rem 0 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 class="brand"><span>Glendale Highschool Marching Band</span> Privacy Policy</h1>
+      <nav class="nav">
+        <a href="index.html">Order form</a>
+        <a href="gallery.html">Photo gallery</a>
+      </nav>
+    </header>
+
+    <article class="panel">
+      <p class="updated">Last updated: August 4, 2026</p>
+      <p>
+        This privacy policy explains how Allyson Renee (the photographer) handles information and photos
+        related to Glendale Highschool Marching Band student portrait orders and the online gallery.
+      </p>
+
+      <h2>Photos &amp; advertising</h2>
+      <div class="highlight">
+        <p>
+          Student photos will not be used for advertisement, marketing, or promotional purposes without
+          specific written consent from a parent or guardian.
+        </p>
+      </div>
+      <p>
+        Photos are created for the school portrait program and for families who purchase packages or digital rights.
+        Personal-use downloads and prints are for family and school-related use only and may not be sold or used commercially by purchasers.
+      </p>
+
+      <h2>Information we collect</h2>
+      <p>When you place an order or contact us, we may collect:</p>
+      <ul>
+        <li>Student name, grade, and instrument/section</li>
+        <li>Parent/guardian name, phone, and email</li>
+        <li>Gallery access code (if provided)</li>
+        <li>Order details (package, add-ons, and totals)</li>
+        <li>Payment confirmation details from Stripe (we do not store full card numbers on this site)</li>
+        <li>Messages you send through the question form below</li>
+      </ul>
+
+      <h2>How we use information</h2>
+      <ul>
+        <li>To fulfill print and digital orders</li>
+        <li>To unlock gallery downloads after digital rights are paid</li>
+        <li>To communicate about orders, delivery, or support</li>
+        <li>To answer questions you send through this page</li>
+      </ul>
+      <p>We do not sell your personal information.</p>
+
+      <h2>Payments</h2>
+      <p>
+        Online card payments are processed by Stripe. Stripe’s privacy practices apply to payment data they handle.
+        Order confirmation details may be emailed to the photographer so the order can be completed.
+      </p>
+
+      <h2>Gallery access</h2>
+      <p>
+        Access codes are intended for the student’s family. Please keep codes private. Preview images may be
+        watermarked until digital rights are purchased.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        For privacy questions or to request written consent documentation for promotional use of a photo,
+        use the form below or email Allyson Renee.
+      </p>
+    </article>
+
+    <section class="panel" id="questions" aria-label="Questions">
+      <h1>Questions? Email Allyson Renee</h1>
+      <p>Send a note below. Your message goes to Allyson Renee and includes your email so she can reply.</p>
+
+      <form id="question-form">
+        <div class="row">
+          <div>
+            <label for="parent_name">Parent / guardian name</label>
+            <input id="parent_name" name="parent_name" type="text" required autocomplete="name" />
+          </div>
+          <div>
+            <label for="student_name">Student name</label>
+            <input id="student_name" name="student_name" type="text" required />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="access_code">Gallery access code (if you have one)</label>
+            <input id="access_code" name="access_code" type="text" placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.06em" />
+          </div>
+          <div>
+            <label for="email">Your email (for reply)</label>
+            <input id="email" name="email" type="email" required autocomplete="email" />
+          </div>
+        </div>
+        <label for="message">Your question</label>
+        <textarea id="message" name="message" required placeholder="How can Allyson help?"></textarea>
+        <p class="hint">Subject line will look like: QUESTION - glenband - GLEN-XXXX Parent / Student</p>
+        <button type="submit" id="send-btn">Send question</button>
+        <p class="status" id="status" hidden></p>
+      </form>
+    </section>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const form = document.getElementById("question-form");
+    const statusEl = document.getElementById("status");
+    const sendBtn = document.getElementById("send-btn");
+
+    const params = new URLSearchParams(window.location.search);
+    const codeFromUrl = (params.get("code") || "").trim().toUpperCase();
+    if (codeFromUrl) form.access_code.value = codeFromUrl;
+    const studentFromUrl = (params.get("student") || "").trim();
+    if (studentFromUrl) form.student_name.value = studentFromUrl;
+
+    function showStatus(message, isError) {
+      statusEl.hidden = !message;
+      statusEl.classList.add("show");
+      statusEl.classList.toggle("error", !!isError);
+      statusEl.classList.toggle("ok", !!message && !isError);
+      statusEl.textContent = message || "";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+      if (!orderEmail || orderEmail.includes("REPLACE")) {
+        showStatus("Email isn’t connected yet. Please try again later.", true);
+        return;
+      }
+      if (!form.reportValidity()) return;
+
+      const parent = form.parent_name.value.trim();
+      const student = form.student_name.value.trim();
+      const code = (form.access_code.value || "").trim().toUpperCase() || "no-code";
+      const email = form.email.value.trim();
+      const message = form.message.value.trim();
+      const who = parent + " / " + student;
+      const subject = "QUESTION - glenband - " + code + " " + who;
+
+      sendBtn.disabled = true;
+      showStatus("Sending…");
+
+      try {
+        const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            _subject: subject,
+            _template: "table",
+            _captcha: "false",
+            _replyto: email,
+            email: email,
+            Parent: parent,
+            Student: student,
+            Access_code: code,
+            Reply_to: email,
+            Question: message,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.message || "Could not send your question.");
+        }
+        form.reset();
+        if (codeFromUrl) form.access_code.value = codeFromUrl;
+        if (studentFromUrl) form.student_name.value = studentFromUrl;
+        showStatus("Sent. Allyson will reply to " + email + " when she can.", false);
+      } catch (err) {
+        showStatus(err.message || "Something went wrong. Please try again.", true);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

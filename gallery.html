@@ -266,6 +266,15 @@
       display: block;
       background: #fff;
     }
+    .site-links {
+      margin: 1rem 0 0.25rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .site-links a {
+      color: var(--navy);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -273,6 +282,7 @@
     <header>
       <h1 class="brand"><span>Student photo gallery</span> Glendale Highschool Marching Band</h1>
       <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Unpaid previews are watermarked. Downloads unlock after Digital Rights are paid.</p>
+      <p class="site-links"><a href="index.html">Order form</a> · <a href="privacy.html">Privacy policy</a></p>
     </header>
 
     <section class="panel" id="gate">
@@ -325,6 +335,8 @@
         loading="lazy"
       ></iframe>
     </section>
+
+    <p class="site-links"><a href="privacy.html" id="privacy-link">Privacy policy &amp; questions</a></p>
   </div>
 
   <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo preview">
@@ -431,6 +443,15 @@
       if (studentName) params.set("student", studentName);
       const src = "index.html?" + params.toString();
       if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
+
+      const privacy = document.getElementById("privacy-link");
+      if (privacy) {
+        const p = new URLSearchParams();
+        if (code) p.set("code", code);
+        if (studentName) p.set("student", studentName);
+        const q = p.toString();
+        privacy.href = q ? "privacy.html?" + q : "privacy.html";
+      }
     }
 
     function showStudent(student) {
