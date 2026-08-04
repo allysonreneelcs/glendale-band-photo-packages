@@ -332,6 +332,55 @@
       font-size: 0.68rem;
     }
 
+    footer a { color: inherit; font-weight: 700; }
+
+    .ask-box {
+      margin-top: 1.1rem;
+      padding: 0.95rem 0.85rem 1rem;
+      border: 1.5px solid var(--navy);
+      background: #fff;
+    }
+    .ask-box h2 {
+      margin: 0 0 0.35rem;
+    }
+    .ask-box > .note {
+      margin: 0 0 0.75rem;
+    }
+    .ask-box textarea.line {
+      min-height: 4.5rem;
+      resize: vertical;
+      border: 1.5px solid var(--rule);
+      padding: 0.45rem 0.5rem;
+      width: 100%;
+    }
+    .ask-box .ask-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      margin-top: 0.35rem;
+    }
+    .ask-box button[type="submit"] {
+      appearance: none;
+      border: 1.5px solid var(--navy);
+      background: var(--navy);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      padding: 0.55rem 0.95rem;
+      cursor: pointer;
+    }
+    .ask-box button:disabled { opacity: 0.65; cursor: wait; }
+    .ask-status {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--navy);
+      display: none;
+    }
+    .ask-status.show { display: block; }
+    .ask-status.error { color: #5c1d1d; }
+    .ask-status.ok { color: #1e5c3a; }
+
     .toolbar {
       position: sticky;
       top: 0;
@@ -643,9 +692,42 @@
 
     <footer>
       <span>Personal use only · Digital files may not be sold or used commercially</span>
-      <span><a href="privacy.html" style="color:inherit;font-weight:700">Privacy policy</a> · Questions? Contact your band director or photographer</span>
+      <span><a href="privacy.html">Privacy policy</a></span>
     </footer>
   </form>
+
+  <section class="ask-box web-only" id="questions" aria-label="Questions for Allyson Renee">
+    <h2>Questions? Email Allyson Renee</h2>
+    <p class="note">Send a question below. It goes straight to Allyson, and your email is included so she can reply.</p>
+    <form id="question-form">
+      <div class="fields" style="grid-template-columns: 1fr 1fr;">
+        <div class="field">
+          <label class="caption" for="q_parent">Parent / guardian name</label>
+          <input class="line" id="q_parent" name="parent_name" type="text" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label class="caption" for="q_student">Student name</label>
+          <input class="line" id="q_student" name="student_name" type="text" required />
+        </div>
+        <div class="field">
+          <label class="caption" for="q_code">Gallery access code (if you have one)</label>
+          <input class="line" id="q_code" name="access_code" type="text" placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.06em" />
+        </div>
+        <div class="field">
+          <label class="caption" for="q_email">Your email (for reply)</label>
+          <input class="line" id="q_email" name="email" type="email" required autocomplete="email" />
+        </div>
+        <div class="field wide">
+          <label class="caption" for="q_message">Your question</label>
+          <textarea class="line" id="q_message" name="message" required placeholder="How can Allyson help?"></textarea>
+        </div>
+      </div>
+      <div class="ask-actions">
+        <button type="submit" id="q_send">Send question</button>
+        <p class="ask-status" id="q_status" hidden></p>
+      </div>
+    </form>
+  </section>
 
   <script src="config.js"></script>
   <script>
@@ -934,6 +1016,91 @@
     if (params.get("canceled") === "1") {
       showStatus("Card payment was canceled. Your order was not submitted. You can try again when you’re ready.", true);
       history.replaceState({}, "", window.location.pathname + (params.get("embed") === "1" ? "?embed=1" : ""));
+    }
+
+    const qForm = document.getElementById("question-form");
+    const qStatus = document.getElementById("q_status");
+    const qSend = document.getElementById("q_send");
+
+    function syncQuestionFieldsFromOrder() {
+      if (!qForm) return;
+      const qParent = document.getElementById("q_parent");
+      const qStudent = document.getElementById("q_student");
+      const qEmail = document.getElementById("q_email");
+      const qCode = document.getElementById("q_code");
+      if (!qParent.value && form.parent.value) qParent.value = form.parent.value;
+      if (!qStudent.value && form.student.value) qStudent.value = form.student.value;
+      if (!qEmail.value && form.email.value) qEmail.value = form.email.value;
+      if (!qCode.value && form.access_code && form.access_code.value) {
+        qCode.value = form.access_code.value.trim().toUpperCase();
+      }
+    }
+
+    if (qForm) {
+      if (codeFromUrl) document.getElementById("q_code").value = codeFromUrl;
+      if (studentFromUrl) document.getElementById("q_student").value = studentFromUrl;
+      syncQuestionFieldsFromOrder();
+      ["parent", "student", "email", "access_code"].forEach((name) => {
+        const el = form.elements[name];
+        if (el) el.addEventListener("change", syncQuestionFieldsFromOrder);
+      });
+
+      qForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        syncQuestionFieldsFromOrder();
+        const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+        if (!orderEmail || orderEmail.includes("REPLACE")) {
+          qStatus.hidden = false;
+          qStatus.className = "ask-status show error";
+          qStatus.textContent = "Email isn’t connected yet. Please try again later.";
+          return;
+        }
+        if (!qForm.reportValidity()) return;
+
+        const parent = document.getElementById("q_parent").value.trim();
+        const student = document.getElementById("q_student").value.trim();
+        const code = (document.getElementById("q_code").value || "").trim().toUpperCase() || "no-code";
+        const email = document.getElementById("q_email").value.trim();
+        const message = document.getElementById("q_message").value.trim();
+        const subject = "QUESTION - glenband - " + code + " " + parent + " / " + student;
+
+        qSend.disabled = true;
+        qStatus.hidden = false;
+        qStatus.className = "ask-status show";
+        qStatus.textContent = "Sending…";
+
+        try {
+          const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              _subject: subject,
+              _template: "table",
+              _captcha: "false",
+              _replyto: email,
+              email: email,
+              Parent: parent,
+              Student: student,
+              Access_code: code,
+              Reply_to: email,
+              Question: message,
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.message || "Could not send your question.");
+          document.getElementById("q_message").value = "";
+          qStatus.className = "ask-status show ok";
+          qStatus.textContent = "Sent. Allyson will reply to " + email + " when she can.";
+        } catch (err) {
+          qStatus.className = "ask-status show error";
+          qStatus.textContent = err.message || "Something went wrong. Please try again.";
+        } finally {
+          qSend.disabled = false;
+        }
+      });
     }
 
     recalc();
