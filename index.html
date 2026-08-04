@@ -411,6 +411,21 @@
       }
     }
 
+    body.embed {
+      background: #fff;
+    }
+    body.embed .toolbar {
+      position: sticky;
+    }
+    body.embed .sheet {
+      margin: 0.75rem auto 1.25rem;
+      border: none;
+      box-shadow: none;
+    }
+    body.embed .hide-when-embed {
+      display: none !important;
+    }
+
     @media (max-width: 720px) {
       .sheet { margin: 0; border: none; padding: 1rem; }
       header, .fields, .packages, .totals, .sig {
@@ -426,7 +441,7 @@
     <button type="submit" form="order-form" id="toolbar-submit">Pay &amp; submit</button>
     <button type="button" class="ghost" onclick="window.print()">Print</button>
     <button type="button" class="ghost" onclick="clearForm()">Clear</button>
-    <a class="ghost web-only" href="gallery.html" style="display:inline-block;padding:0.45rem 0.75rem;border:1.5px solid var(--navy);color:var(--navy);text-decoration:none;font-weight:700">Photo gallery</a>
+    <a class="ghost web-only hide-when-embed" href="gallery.html" style="display:inline-block;padding:0.45rem 0.75rem;border:1.5px solid var(--navy);color:var(--navy);text-decoration:none;font-weight:700">Photo gallery</a>
   </div>
 
   <div id="status" class="status" role="status" aria-live="polite"></div>
@@ -467,7 +482,7 @@
           <input class="line" id="access_code" name="access_code" type="text" placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.06em" />
         </div>
       </div>
-      <p class="note web-only">Have a code already? <a href="gallery.html">Open the photo gallery</a> to view Lightroom photos. Adding the code here links a digital package payment to that student’s downloads.</p>
+      <p class="note web-only hide-when-embed">Have a code already? <a href="gallery.html">Open the photo gallery</a> to view photos. Adding the code here links a digital package payment to that student’s downloads.</p>
     </section>
 
     <section>
@@ -878,9 +893,13 @@
 
     async function startStripeCheckout(selected) {
       const apiUrl = (window.STRIPE_CHECKOUT_API_URL || "").trim();
+      const isEmbed = document.body.classList.contains("embed");
       const base = window.location.href.replace(/[#?].*$/, "").replace(/index\.html$/i, "");
-      const thanksBase = base.endsWith("/") ? base + "thanks.html" : base.replace(/\/?$/, "/") + "thanks.html";
-      const cancelUrl = window.location.href.split("#")[0].split("?")[0] + "?canceled=1";
+      const root = base.endsWith("/") ? base : base.replace(/\/?$/, "/");
+      const thanksBase = root + "thanks.html";
+      const cancelUrl = isEmbed
+        ? root + "gallery.html"
+        : window.location.href.split("#")[0].split("?")[0] + "?canceled=1";
 
       const orderSnapshot = buildOrderPayload("Paid online via Stripe (pending confirmation)");
       sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderSnapshot));
@@ -901,7 +920,7 @@
           accessCode: (form.access_code && form.access_code.value.trim()) || "",
           addons: addonQuantities(),
           successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
-          cancelUrl: cancelUrl,
+          cancelUrl,
         }),
       });
 
@@ -910,7 +929,11 @@
         sessionStorage.removeItem(ORDER_STORAGE_KEY);
         throw new Error(result.error || "Could not start card payment.");
       }
-      window.location.href = result.url;
+      if (isEmbed && window.top) {
+        window.top.location.href = result.url;
+      } else {
+        window.location.href = result.url;
+      }
     }
 
     form.addEventListener("submit", async (event) => {
@@ -944,7 +967,12 @@
 
         showStatus("Sending your order…");
         await emailOrder(buildOrderPayload());
-        window.location.href = "thanks.html";
+        const thanks = "thanks.html";
+        if (document.body.classList.contains("embed") && window.top) {
+          window.top.location.href = thanks;
+        } else {
+          window.location.href = thanks;
+        }
       } catch (err) {
         showStatus("Something went wrong. Please print the form or try again. (" + err.message + ")", true);
         submitButtons.forEach((btn) => { btn.disabled = false; });
@@ -956,9 +984,20 @@
     }
 
     const params = new URLSearchParams(window.location.search);
+    if (params.get("embed") === "1") {
+      document.body.classList.add("embed");
+    }
+    const codeFromUrl = (params.get("code") || "").trim().toUpperCase();
+    if (codeFromUrl && form.access_code) {
+      form.access_code.value = codeFromUrl;
+    }
+    const studentFromUrl = (params.get("student") || "").trim();
+    if (studentFromUrl && form.student && !form.student.value) {
+      form.student.value = studentFromUrl;
+    }
     if (params.get("canceled") === "1") {
       showStatus("Card payment was canceled. Your order was not submitted. You can try again or choose cash/check.", true);
-      history.replaceState({}, "", window.location.pathname);
+      history.replaceState({}, "", window.location.pathname + (params.get("embed") === "1" ? "?embed=1" : ""));
     }
 
     recalc();

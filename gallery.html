@@ -241,6 +241,31 @@
       color: var(--muted);
       border: 1px dashed var(--rule);
     }
+    .order-embed {
+      margin-top: 1.5rem;
+      background: #fff;
+      border: 1.5px solid var(--navy);
+      overflow: hidden;
+    }
+    .order-embed-head {
+      padding: 1rem 1.15rem 0.65rem;
+      border-bottom: 1px solid var(--rule);
+    }
+    .order-embed-head h2 {
+      margin: 0 0 0.35rem;
+      font-family: "Archivo Black", Impact, sans-serif;
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      color: var(--navy-deep);
+      letter-spacing: 0.04em;
+    }
+    .order-embed iframe {
+      width: 100%;
+      min-height: 2100px;
+      border: 0;
+      display: block;
+      background: #fff;
+    }
   </style>
 </head>
 <body>
@@ -256,9 +281,6 @@
         <input id="code" name="code" required placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" />
         <div class="actions">
           <button type="submit" class="large">View photos</button>
-        </div>
-        <div class="actions" style="margin-top:0.65rem">
-          <a class="btn ghost" href="index.html">Order prints / packages</a>
         </div>
         <p class="status" id="gate-status" hidden></p>
       </form>
@@ -291,7 +313,18 @@
       </div>
     </section>
 
-    <p class="links"><a href="index.html">Full order form</a> (prints &amp; packages)</p>
+    <section class="order-embed" id="order-section" aria-label="Order prints and packages">
+      <div class="order-embed-head">
+        <h2>Order prints &amp; packages</h2>
+        <p class="note" style="margin:0">Use the full order form below. If you already entered a gallery code, it will be filled in for you.</p>
+      </div>
+      <iframe
+        id="order-frame"
+        title="Full photo order form"
+        src="index.html?embed=1"
+        loading="lazy"
+      ></iframe>
+    </section>
   </div>
 
   <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo preview">
@@ -390,12 +423,23 @@
       activePhotoId = null;
     }
 
+    function syncOrderFrame(code, studentName) {
+      const frame = document.getElementById("order-frame");
+      if (!frame) return;
+      const params = new URLSearchParams({ embed: "1" });
+      if (code) params.set("code", code);
+      if (studentName) params.set("student", studentName);
+      const src = "index.html?" + params.toString();
+      if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
+    }
+
     function showStudent(student) {
       current = student;
       gate.classList.add("hidden");
       gallery.classList.remove("hidden");
       document.getElementById("student-name").textContent = student.studentName || "Student";
       document.getElementById("code-label").textContent = student.code;
+      syncOrderFrame(student.code, student.studentName || "");
       const badge = document.getElementById("digital-badge");
       const note = document.getElementById("access-note");
 
@@ -454,6 +498,7 @@
       closeLightbox();
       gallery.classList.add("hidden");
       gate.classList.remove("hidden");
+      syncOrderFrame("");
       history.replaceState({}, "", "gallery.html");
     });
 
