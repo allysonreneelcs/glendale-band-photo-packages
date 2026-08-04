@@ -53,7 +53,7 @@ window.STRIPE_CHECKOUT_API_URL = "https://YOUR-PROJECT.vercel.app/api/create-che
 2. Submit calls the Vercel API, which recalculates the total from fixed prices and creates a Stripe Checkout Session.
 3. Parent pays on Stripe’s hosted page.
 4. Stripe returns them to `thanks.html`. The site emails the order to **AllysonreneeLCS@gmail.com** via FormSubmit with payment marked paid (includes Stripe session id).
-5. If they cancel on Stripe, they return to the form with a “payment canceled” message. Cash/check/other still submit without Stripe.
+5. If they cancel on Stripe, they return to the form with a “payment canceled” message. Cash/check still submit without Stripe.
 
 ---
 

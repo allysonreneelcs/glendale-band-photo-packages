@@ -596,7 +596,6 @@
           <label><input type="radio" name="pay_method" value="card" id="pay_card" checked /> Pay online with card</label>
           <label><input type="radio" name="pay_method" value="cash" id="pay_cash" /> Cash</label>
           <label><input type="radio" name="pay_method" value="check" id="pay_check" /> Check</label>
-          <label><input type="radio" name="pay_method" value="other" id="pay_other" /> Other / pay later</label>
           <label style="flex: 1; min-width: 8rem;">
             Check # <input class="line" name="check_number" type="text" style="display:inline-block;width:5rem;min-height:1.2rem;" />
           </label>
@@ -721,7 +720,6 @@
         card: "Pay online with card (Stripe)",
         cash: "Cash",
         check: "Check",
-        other: "Other / pay later",
       };
       const methods = [labels[method] || method];
       const checkNo = form.check_number.value.trim();
@@ -857,7 +855,7 @@
 
       const method = selectedPayMethod();
       if (method === "card" && !checkoutApiConfigured()) {
-        showStatus("Online card payment isn’t set up yet. Choose cash, check, or other — or ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
+        showStatus("Online card payment isn’t set up yet. Choose cash or check — or ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
         return;
       }
 
