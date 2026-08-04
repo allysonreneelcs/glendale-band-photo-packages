@@ -43,6 +43,7 @@ module.exports = async function handler(req, res) {
         instrument: body.instrument,
         lightroomGalleryUrl: body.lightroomGalleryUrl,
         notes: body.notes,
+        dslrFiles: body.dslrFiles,
         digitalPaid: body.digitalPaid,
         digitalPaidVia: body.digitalPaidVia || (body.digitalPaid ? "admin" : undefined),
       });

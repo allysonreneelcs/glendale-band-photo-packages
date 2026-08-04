@@ -80,6 +80,35 @@
       padding: 0.35rem 0.1rem;
       margin-bottom: 0.7rem;
     }
+    textarea {
+      min-height: 4.5rem;
+      resize: vertical;
+      border: 1.5px solid var(--rule);
+      border-radius: 0;
+      padding: 0.45rem 0.5rem;
+      line-height: 1.35;
+    }
+    .field-hint {
+      margin: -0.45rem 0 0.75rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .dslr-ref {
+      margin-top: 0.25rem;
+      font-size: 0.82rem;
+      color: var(--navy);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .dslr-ref strong {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 0.1rem;
+    }
     input:focus, textarea:focus { outline: none; border-bottom-color: var(--brass); }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
     .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
@@ -228,6 +257,11 @@
               <input id="notes" />
             </div>
           </div>
+          <div>
+            <label for="dslrFiles">DSLR / portrait file numbers</label>
+            <textarea id="dslrFiles" placeholder="e.g. _DSC4521, _DSC4522 · card folder 2026-09-12/Band"></textarea>
+            <p class="field-hint">Your private reference for which camera files belong to this student. Parents never see this.</p>
+          </div>
           <div class="actions">
             <button type="submit">Create code</button>
             <button type="button" class="ghost" id="refresh-btn">Refresh list</button>
@@ -240,6 +274,7 @@
 
       <section class="panel no-print hidden" id="upload-panel">
         <h2>Upload photos — <span id="upload-student-label"></span></h2>
+        <div id="upload-dslr-hint"></div>
         <p class="help">Select one or more JPEG/PNG/WebP files. Parents will see these on the gallery page with watermarks until digital is paid.</p>
         <input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple />
         <div class="actions">
@@ -258,13 +293,14 @@
               <tr>
                 <th>Code</th>
                 <th>Student</th>
+                <th>DSLR files</th>
                 <th>Photos</th>
                 <th>Digital</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="student-rows">
-              <tr><td colspan="5" class="muted">Loading…</td></tr>
+              <tr><td colspan="6" class="muted">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -356,6 +392,13 @@
       const student = students.find((s) => s.code === code);
       document.getElementById("upload-student-label").textContent =
         (student ? student.studentName + " · " : "") + code;
+      const dslrHint = document.getElementById("upload-dslr-hint");
+      if (student && student.dslrFiles) {
+        dslrHint.innerHTML = '<div class="dslr-ref"><strong>DSLR files to pull</strong>' +
+          escapeHtml(student.dslrFiles) + "</div>";
+      } else {
+        dslrHint.innerHTML = '<p class="muted" style="margin:0.35rem 0 0">No DSLR file notes saved for this student yet.</p>';
+      }
       uploadPanel.classList.remove("hidden");
       setStatus(uploadStatus, "");
       try {
@@ -369,7 +412,7 @@
 
     function render() {
       if (!students.length) {
-        rows.innerHTML = '<tr><td colspan="5" class="muted">No students yet. Create a code above.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="6" class="muted">No students yet. Create a code above.</td></tr>';
         slips.innerHTML = '<p class="muted">No slips to print yet.</p>';
         return;
       }
@@ -378,15 +421,20 @@
         const badge = s.digitalPaid
           ? '<span class="badge paid">Paid</span>'
           : '<span class="badge unpaid">Locked</span>';
+        const dslr = s.dslrFiles
+          ? '<div class="dslr-ref">' + escapeHtml(s.dslrFiles) + "</div>"
+          : '<span class="muted">—</span>';
         return (
           '<tr data-code="' + escapeAttr(s.code) + '">' +
             '<td class="code">' + escapeHtml(s.code) + '</td>' +
             '<td><strong>' + escapeHtml(s.studentName) + '</strong><div class="muted">' +
               escapeHtml([s.grade, s.instrument].filter(Boolean).join(" · ")) + "</div></td>" +
+            "<td>" + dslr + "</td>" +
             "<td>" + (s.photoCount || 0) + "</td>" +
             "<td>" + badge + "</td>" +
             '<td class="actions" style="margin:0">' +
               '<button type="button" data-act="upload">Upload photos</button>' +
+              '<button type="button" class="ghost" data-act="edit-dslr">Edit DSLR files</button>' +
               '<button type="button" class="ghost" data-act="toggle-digital">' +
                 (s.digitalPaid ? "Mark unpaid" : "Mark digital paid") +
               "</button>" +
@@ -466,6 +514,7 @@
             grade: document.getElementById("grade").value,
             instrument: document.getElementById("instrument").value,
             notes: document.getElementById("notes").value,
+            dslrFiles: document.getElementById("dslrFiles").value,
           }),
         });
         event.target.reset();
@@ -544,6 +593,18 @@
       try {
         if (btn.dataset.act === "upload") {
           await openUpload(code);
+        } else if (btn.dataset.act === "edit-dslr") {
+          const next = window.prompt(
+            "DSLR / portrait file numbers for " + student.studentName + " (parents never see this):",
+            student.dslrFiles || ""
+          );
+          if (next === null) return;
+          await api("/api/admin/student?code=" + encodeURIComponent(code), {
+            method: "PATCH",
+            body: JSON.stringify({ dslrFiles: next }),
+          });
+          await refresh();
+          if (uploadCode === code) await openUpload(code);
         } else if (btn.dataset.act === "toggle-digital") {
           const next = !student.digitalPaid;
           const tip = next

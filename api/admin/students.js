@@ -32,6 +32,7 @@ module.exports = async function handler(req, res) {
         instrument: body.instrument,
         lightroomGalleryUrl: body.lightroomGalleryUrl,
         notes: body.notes,
+        dslrFiles: body.dslrFiles,
       });
       sendJson(res, 201, headers, { student });
       return;
