@@ -40,10 +40,11 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const accessCode = formatCode(session.metadata && session.metadata.accessCode);
-    const packageKey = String((session.metadata && session.metadata.packageKey) || "").toLowerCase();
+    const meta = session.metadata || {};
+    const accessCode = formatCode(meta.accessCode);
+    const packageKey = String(meta.packageKey || "").toLowerCase();
     const includesDigital =
-      String((session.metadata && session.metadata.includesDigital) || "") === "1" ||
+      String(meta.includesDigital || "") === "1" ||
       packageIncludesDigital(packageKey);
 
     let student = null;
@@ -62,12 +63,43 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    const amountTotal = typeof session.amount_total === "number"
+      ? `$${(session.amount_total / 100).toFixed(2).replace(/\.00$/, "")}`
+      : "";
+
+    const orderForEmail = {
+      _subject: accessCode
+        ? `Band photo order — ${meta.student || "Student"} — ${accessCode}`
+        : `Band photo order — ${meta.student || "Student"}`,
+      _template: "table",
+      _captcha: "false",
+      Student: meta.student || "—",
+      Access_code: accessCode || "—",
+      Grade: meta.grade || "—",
+      Instrument: meta.instrument || "—",
+      Package: meta.package
+        ? `${meta.package}${meta.packagePrice ? " — " + meta.packagePrice : ""}`
+        : "—",
+      Package_contents: meta.packageContents || "—",
+      Lab_print_checklist: meta.labPrintChecklist || "—",
+      Add_ons: meta.addons || "None",
+      Grand_total: amountTotal || "—",
+      Parent: meta.parent || "—",
+      Phone: meta.phone || "—",
+      Email: meta.email || session.customer_email || "—",
+      Payment: `Paid online via Stripe · session ${session.id}`,
+      Signature: meta.signature || "—",
+      Date: meta.date || "—",
+      Stripe_session: session.id,
+    };
+
     sendJson(res, 200, headers, {
       paid: true,
       includesDigital,
       accessCode: accessCode || null,
       unlocked,
       student: student ? publicStudent(student) : null,
+      orderForEmail,
       reminder: unlocked
         ? "Digital rights are marked paid in our system. In Lightroom, turn ON “Allow JPG Downloads” for this student’s shared album so parents can download."
         : includesDigital

@@ -118,12 +118,20 @@
       const rows = [
         ["Student", order.Student],
         ["Access code", order.Access_code],
+        ["Grade", order.Grade],
+        ["Instrument", order.Instrument],
         ["Package", order.Package],
+        ["Package contents", order.Package_contents],
+        ["Lab print checklist", order.Lab_print_checklist],
         ["Add-ons", order.Add_ons],
+        ["Package total", order.Package_total],
+        ["Add-on total", order.Addon_total],
         ["Total", order.Grand_total],
         ["Parent", order.Parent],
+        ["Phone", order.Phone],
         ["Email", order.Email],
         ["Payment", order.Payment],
+        ["Date", order.Date],
       ];
       summary.innerHTML = "";
       rows.forEach(([label, value]) => {
@@ -139,7 +147,7 @@
     }
 
     function showGalleryLink(code) {
-      if (!code) return;
+      if (!code || code === "—") return;
       galleryHref.href = "gallery.html?code=" + encodeURIComponent(code);
       galleryLink.hidden = false;
     }
@@ -176,6 +184,11 @@
       return result;
     }
 
+    function mergeOrder(localOrder, serverOrder) {
+      if (!serverOrder && !localOrder) return null;
+      return Object.assign({}, localOrder || {}, serverOrder || {});
+    }
+
     (async function init() {
       let order = null;
       try {
@@ -193,11 +206,12 @@
           ? "Thanks — digital rights are paid. Open your gallery, and the photographer will enable Lightroom downloads for your album."
           : "Thanks — your card payment went through and your photo order is on its way to the photographer.";
 
+        let verified = null;
         if (sessionId) {
           notify.hidden = false;
           notify.textContent = "Confirming payment and gallery access…";
           try {
-            const verified = await verifyPayment(sessionId);
+            verified = await verifyPayment(sessionId);
             if (verified && verified.unlocked) {
               notify.textContent = "Gallery digital access is marked paid for code " + (verified.accessCode || "") + ".";
               if (verified.accessCode) showGalleryLink(verified.accessCode);
@@ -212,8 +226,11 @@
           }
         }
 
+        order = mergeOrder(order, verified && verified.orderForEmail);
         if (order) {
-          order.Payment = "Paid online via Stripe" + (sessionId ? " · session " + sessionId : "");
+          if (!order.Payment || /pending/i.test(order.Payment)) {
+            order.Payment = "Paid online via Stripe" + (sessionId ? " · session " + sessionId : "");
+          }
           renderSummary(order);
           if (!notify.textContent) {
             notify.hidden = false;

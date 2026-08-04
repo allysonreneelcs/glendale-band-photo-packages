@@ -463,7 +463,7 @@
           <input class="line" id="instrument" name="instrument" type="text" />
         </div>
         <div class="field wide web-only">
-          <label class="caption" for="access_code">Photo access code <span style="font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(optional — from gallery slip, e.g. GLEN-7K2M)</span></label>
+          <label class="caption" for="access_code">Photo access code <span style="font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(from gallery slip — include if you have it, e.g. GLEN-7K2M)</span></label>
           <input class="line" id="access_code" name="access_code" type="text" placeholder="GLEN-7K2M" autocomplete="off" spellcheck="false" style="text-transform:uppercase;letter-spacing:0.06em" />
         </div>
       </div>
@@ -697,6 +697,69 @@
       }
     }
 
+    const PACKAGE_CONTENTS = {
+      digital: ["High-resolution digital file", "Personal print rights"],
+      keepsake: ["2 — 5×7 prints", "4 — 4×6 prints", "8 wallets", "Prints only (no digital)"],
+      showcase: ["Digital rights included", "1 — 8×10", "2 — 5×7 prints", "4 — 4×6 prints", "8 wallets"],
+      allstar: [
+        "Digital rights included",
+        "1 — 16×20 wall print",
+        "2 — 8×10 prints",
+        "2 — 5×7 prints",
+        "8 — 4×6 prints",
+        "16 wallets",
+      ],
+    };
+
+    const PACKAGE_PRINTS = {
+      digital: [],
+      keepsake: [
+        { size: "5×7", qty: 2 },
+        { size: "4×6", qty: 4 },
+        { size: "wallets (sheet of 8)", qty: 1 },
+      ],
+      showcase: [
+        { size: "8×10", qty: 1 },
+        { size: "5×7", qty: 2 },
+        { size: "4×6", qty: 4 },
+        { size: "wallets (sheet of 8)", qty: 1 },
+      ],
+      allstar: [
+        { size: "16×20", qty: 1 },
+        { size: "8×10", qty: 2 },
+        { size: "5×7", qty: 2 },
+        { size: "4×6", qty: 8 },
+        { size: "wallets (sheet of 8)", qty: 2 },
+      ],
+    };
+
+    const ADDON_SIZES = {
+      addon_810: "8×10",
+      addon_57: "5×7",
+      addon_46: "4×6",
+      addon_wallets: "wallets (sheet of 8)",
+      addon_1620: "16×20",
+    };
+
+    function packageContentsText(key) {
+      return (PACKAGE_CONTENTS[key] || []).join("; ") || "—";
+    }
+
+    function labPrintChecklist(key) {
+      const totals = {};
+      function add(size, qty) {
+        if (!size || !qty) return;
+        totals[size] = (totals[size] || 0) + qty;
+      }
+      (PACKAGE_PRINTS[key] || []).forEach((row) => add(row.size, row.qty));
+      form.querySelectorAll(".qty").forEach((input) => {
+        const qty = Number(input.value) || 0;
+        if (qty > 0) add(ADDON_SIZES[input.name] || input.dataset.label, qty);
+      });
+      const lines = Object.entries(totals).map(([size, qty]) => qty + " × " + size);
+      return lines.length ? lines.join("; ") : "None (digital only)";
+    }
+
     function addonSummary() {
       const parts = [];
       form.querySelectorAll(".qty").forEach((input) => {
@@ -729,15 +792,24 @@
 
     function buildOrderPayload(extraPayment) {
       const selected = form.querySelector('input[name="package"]:checked');
+      const packageKey = selected ? selected.dataset.key : "";
+      const accessCode = (form.access_code && form.access_code.value.trim().toUpperCase()) || "";
+      const studentName = form.student.value.trim();
+      const subject = accessCode
+        ? "Band photo order — " + studentName + " — " + accessCode
+        : "Band photo order — " + studentName;
+
       return {
-        _subject: "Band photo order — " + form.student.value,
+        _subject: subject,
         _template: "table",
         _captcha: "false",
-        Student: form.student.value,
+        Student: studentName,
+        Access_code: accessCode || "—",
         Grade: form.grade.value || "—",
         Instrument: form.instrument.value || "—",
-        Access_code: (form.access_code && form.access_code.value.trim()) || "—",
         Package: selected ? selected.value : "",
+        Package_contents: packageContentsText(packageKey),
+        Lab_print_checklist: labPrintChecklist(packageKey),
         Add_ons: addonSummary(),
         Package_total: "$" + (pkgTotal.value || "0"),
         Addon_total: "$" + (addonTotal.value || "0"),

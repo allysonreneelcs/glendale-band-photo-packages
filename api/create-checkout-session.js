@@ -6,7 +6,13 @@
  */
 
 const Stripe = require("stripe");
-const { PACKAGES, ADDONS, packageIncludesDigital } = require("../lib/packages");
+const {
+  PACKAGES,
+  ADDONS,
+  packageIncludesDigital,
+  packageContentsText,
+  labPrintChecklist,
+} = require("../lib/packages");
 const { formatCode } = require("../lib/codes");
 
 function corsHeaders(origin) {
@@ -129,10 +135,12 @@ module.exports = async function handler(req, res) {
   ];
 
   const addonParts = [];
+  const addonQtyMeta = {};
   const addons = body.addons && typeof body.addons === "object" ? body.addons : {};
   if (!digitalOnly) {
     for (const [key, info] of Object.entries(ADDONS)) {
       const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
+      addonQtyMeta[key] = qty;
       if (qty > 0) {
         lineItems.push({
           price_data: {
@@ -148,6 +156,8 @@ module.exports = async function handler(req, res) {
   }
 
   const includesDigital = packageIncludesDigital(packageKey);
+  const contents = packageContentsText(packageKey);
+  const labChecklist = digitalOnly ? "Digital only — no lab prints" : labPrintChecklist(packageKey, addonQtyMeta) || "None";
   const stripe = new Stripe(secret);
 
   try {
@@ -168,6 +178,9 @@ module.exports = async function handler(req, res) {
         instrument: instrument || "—",
         package: pkg.name,
         packageKey,
+        packagePrice: `$${(pkg.unitAmount / 100).toFixed(0)}`,
+        packageContents: contents.slice(0, 450),
+        labPrintChecklist: labChecklist.slice(0, 450),
         includesDigital: includesDigital ? "1" : "0",
         accessCode: accessCode || "",
         addons: addonParts.length ? addonParts.join(", ").slice(0, 450) : "None",
@@ -177,7 +190,7 @@ module.exports = async function handler(req, res) {
       },
       payment_intent_data: {
         description: accessCode
-          ? `Glendale band photo — ${accessCode} — ${pkg.name}`
+          ? `Glendale band photo — ${accessCode} — ${student} — ${pkg.name}`
           : `Glendale band photo — ${student} — ${pkg.name}`,
         receipt_email: email,
       },
