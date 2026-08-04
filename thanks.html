@@ -94,8 +94,8 @@
     <p id="lead">Thanks — your photo order was submitted. The photographer will follow up about payment and delivery.</p>
     <dl class="summary" id="summary" hidden></dl>
     <p class="status-msg" id="notify" hidden></p>
-    <p id="gallery-link" hidden><a id="gallery-href" href="gallery.html">Open your photo gallery</a></p>
-    <p><a href="index.html">Submit another order</a></p>
+    <p id="gallery-link" hidden><a id="gallery-href" href="index.html">Open your photo gallery</a></p>
+    <p><a href="order.html">Submit another order</a> · <a href="index.html">Back to gallery</a></p>
   </main>
 
   <script src="config.js"></script>
@@ -148,7 +148,7 @@
 
     function showGalleryLink(code) {
       if (!code || code === "—") return;
-      galleryHref.href = "gallery.html?code=" + encodeURIComponent(code);
+      galleryHref.href = "index.html?code=" + encodeURIComponent(code);
       galleryLink.hidden = false;
     }
 
