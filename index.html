@@ -456,8 +456,7 @@
       </div>
       <div class="form-meta">
         <strong>Student portraits</strong>
-        <span class="web-only">Pay online with card or<br /></span>
-        print &amp; return with payment<br />
+        <span class="web-only">Pay online with card<br /></span>
         One form per student
       </div>
     </header>
@@ -607,15 +606,8 @@
             <input class="line" id="email" name="email" type="email" required />
           </div>
         </div>
-        <div class="checks">
-          <label><input type="radio" name="pay_method" value="card" id="pay_card" checked /> Pay online with card</label>
-          <label><input type="radio" name="pay_method" value="cash" id="pay_cash" /> Cash</label>
-          <label><input type="radio" name="pay_method" value="check" id="pay_check" /> Check</label>
-          <label style="flex: 1; min-width: 8rem;">
-            Check # <input class="line" name="check_number" type="text" style="display:inline-block;width:5rem;min-height:1.2rem;" />
-          </label>
-        </div>
-        <p class="note" id="pay-online-note">Online card payments use Stripe Checkout. You’ll be redirected to pay securely, then returned here.</p>
+        <input type="hidden" name="pay_method" id="pay_card" value="card" />
+        <p class="note" id="pay-online-note">Orders are placed by paying online with card (Stripe Checkout). You’ll be redirected to pay securely, then returned here.</p>
         <div class="sig">
           <div class="field">
             <label class="caption" for="signature">Type full name as signature</label>
@@ -680,35 +672,22 @@
       return url && !url.includes("REPLACE");
     }
 
-    function selectedPayMethod() {
-      const el = form.querySelector('input[name="pay_method"]:checked');
-      return el ? el.value : "card";
-    }
-
     function updatePayUi() {
-      const method = selectedPayMethod();
-      const online = method === "card";
       const onlineReady = checkoutApiConfigured();
-      const submitLabel = online ? "Pay & submit order" : "Submit order";
       const toolbar = document.getElementById("toolbar-submit");
       const mainBtn = document.getElementById("submit-btn-label");
       const help = document.getElementById("submit-help");
       const note = document.getElementById("pay-online-note");
 
-      if (toolbar) toolbar.textContent = online ? "Pay & submit" : "Submit order";
-      if (mainBtn) mainBtn.textContent = submitLabel;
+      if (toolbar) toolbar.textContent = "Pay & submit";
+      if (mainBtn) mainBtn.textContent = "Pay & submit order";
 
-      if (online) {
-        help.textContent = onlineReady
-          ? "You’ll pay securely with Stripe, then we’ll email the photographer your order details."
-          : "Online card payment isn’t connected yet. Choose cash/check, or ask the photographer to finish Stripe setup.";
-        note.style.display = "";
-        note.textContent = onlineReady
-          ? "Online card payments use Stripe Checkout. You’ll be redirected to pay securely, then returned here."
-          : "Card payments need a one-time Stripe + Vercel setup (see STRIPE-SETUP.md). Cash and check still work.";
+      if (onlineReady) {
+        help.textContent = "You’ll pay securely with Stripe, then we’ll email the photographer your order details.";
+        note.textContent = "Orders are placed by paying online with card (Stripe Checkout). You’ll be redirected to pay securely, then returned here.";
       } else {
-        help.textContent = "You’ll get a confirmation email. Pay cash/check to the photographer or as directed by band staff.";
-        note.style.display = "none";
+        help.textContent = "Online card payment isn’t connected yet. Ask the photographer to finish Stripe setup.";
+        note.textContent = "Card payments need a one-time Stripe + Vercel setup (see STRIPE-SETUP.md). Online orders can’t be placed until that’s done.";
       }
     }
 
@@ -793,16 +772,7 @@
     }
 
     function paymentMethods() {
-      const method = selectedPayMethod();
-      const labels = {
-        card: "Pay online with card (Stripe)",
-        cash: "Cash",
-        check: "Check",
-      };
-      const methods = [labels[method] || method];
-      const checkNo = form.check_number.value.trim();
-      if (checkNo) methods.push("Check # " + checkNo);
-      return methods.join(", ");
+      return "Pay online with card (Stripe)";
     }
 
     function buildOrderPayload(extraPayment) {
@@ -856,9 +826,8 @@
       grandTotal.value = pkg || addons ? money(pkg + addons) : "";
     }
 
-    form.addEventListener("change", (event) => {
+    form.addEventListener("change", () => {
       recalc();
-      if (event.target && event.target.name === "pay_method") updatePayUi();
     });
     form.addEventListener("input", recalc);
 
@@ -867,28 +836,8 @@
       form.querySelectorAll(".line-total").forEach((el) => { el.textContent = "$0"; });
       statusEl.classList.remove("show", "error");
       if (!form.date.value) form.date.valueAsDate = new Date();
-      document.getElementById("pay_card").checked = true;
       recalc();
       updatePayUi();
-    }
-
-    async function emailOrder(payload) {
-      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
-      if (!orderEmail || orderEmail.includes("REPLACE")) {
-        throw new Error("Order email isn’t connected yet.");
-      }
-      const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.message || "Could not send order.");
-      }
     }
 
     async function startStripeCheckout(selected) {
@@ -948,9 +897,8 @@
 
       if (!form.reportValidity()) return;
 
-      const method = selectedPayMethod();
-      if (method === "card" && !checkoutApiConfigured()) {
-        showStatus("Online card payment isn’t set up yet. Choose cash or check — or ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
+      if (!checkoutApiConfigured()) {
+        showStatus("Online card payment isn’t set up yet. Ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
         return;
       }
 
@@ -959,22 +907,10 @@
       submitButtons.forEach((btn) => { btn.disabled = true; });
 
       try {
-        if (method === "card") {
-          showStatus("Redirecting to secure card payment…");
-          await startStripeCheckout(selected);
-          return;
-        }
-
-        showStatus("Sending your order…");
-        await emailOrder(buildOrderPayload());
-        const thanks = "thanks.html";
-        if (document.body.classList.contains("embed") && window.top) {
-          window.top.location.href = thanks;
-        } else {
-          window.location.href = thanks;
-        }
+        showStatus("Redirecting to secure card payment…");
+        await startStripeCheckout(selected);
       } catch (err) {
-        showStatus("Something went wrong. Please print the form or try again. (" + err.message + ")", true);
+        showStatus("Something went wrong. Please try again. (" + err.message + ")", true);
         submitButtons.forEach((btn) => { btn.disabled = false; });
       }
     });
@@ -996,7 +932,7 @@
       form.student.value = studentFromUrl;
     }
     if (params.get("canceled") === "1") {
-      showStatus("Card payment was canceled. Your order was not submitted. You can try again or choose cash/check.", true);
+      showStatus("Card payment was canceled. Your order was not submitted. You can try again when you’re ready.", true);
       history.replaceState({}, "", window.location.pathname + (params.get("embed") === "1" ? "?embed=1" : ""));
     }
 
