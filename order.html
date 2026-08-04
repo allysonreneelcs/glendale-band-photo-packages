@@ -462,14 +462,16 @@
 
     body.embed {
       background: #fff;
+      min-height: 0;
     }
     body.embed .toolbar {
       position: sticky;
     }
     body.embed .sheet {
-      margin: 0.75rem auto 1.25rem;
+      margin: 0.5rem auto 0.75rem;
       border: none;
       box-shadow: none;
+      min-height: 0;
     }
     body.embed .hide-when-embed {
       display: none !important;
@@ -985,8 +987,31 @@
       history.replaceState({}, "", window.location.pathname + (params.get("embed") === "1" ? "?embed=1" : ""));
     }
 
+    function notifyParentHeight() {
+      if (!document.body.classList.contains("embed") || !window.parent || window.parent === window) return;
+      const height = Math.ceil(Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+        form ? form.getBoundingClientRect().bottom + 24 : 0
+      ));
+      window.parent.postMessage({ type: "band-order-height", height: height }, "*");
+    }
+
+    if (document.body.classList.contains("embed")) {
+      notifyParentHeight();
+      window.addEventListener("load", notifyParentHeight);
+      form.addEventListener("input", notifyParentHeight);
+      form.addEventListener("change", notifyParentHeight);
+      if (window.ResizeObserver) {
+        new ResizeObserver(notifyParentHeight).observe(document.body);
+      } else {
+        setInterval(notifyParentHeight, 1000);
+      }
+    }
+
     recalc();
     updatePayUi();
+    notifyParentHeight();
   </script>
 </body>
 </html>

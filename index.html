@@ -261,7 +261,8 @@
     }
     .order-embed iframe {
       width: 100%;
-      min-height: 2200px;
+      height: 480px;
+      min-height: 0;
       border: 0;
       display: block;
       background: #fff;
@@ -571,6 +572,15 @@
       if (qCode && code) qCode.value = code;
       if (qStudent && studentName && !qStudent.value) qStudent.value = studentName;
     }
+
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || data.type !== "band-order-height") return;
+      const frame = document.getElementById("order-frame");
+      const height = Number(data.height);
+      if (!frame || !Number.isFinite(height) || height < 200) return;
+      frame.style.height = Math.ceil(height) + "px";
+    });
 
     function showStudent(student) {
       current = student;
