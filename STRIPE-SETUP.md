@@ -59,6 +59,8 @@ window.STRIPE_CHECKOUT_API_URL = "https://YOUR-PROJECT.vercel.app/api/create-che
 
 ## Going live
 
+**Status (Aug 2026):** Checkout is configured for **Stripe live mode** (`pk_live_…` in `config.js`; `STRIPE_SECRET_KEY` as `sk_live_…` on Vercel). Real card payments will charge.
+
 1. In Stripe, switch to **Live mode** and copy the live secret key.
 2. Update the Vercel env var `STRIPE_SECRET_KEY` to `sk_live_...` and redeploy.
 3. Complete Stripe’s business verification / payouts setup so money can transfer to your bank.

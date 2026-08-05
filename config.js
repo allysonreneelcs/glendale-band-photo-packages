@@ -12,4 +12,4 @@ window.BAND_PHOTO_API_BASE = "https://glendale-band-photo-packages.vercel.app";
 
 // Optional: Stripe publishable key (pk_test_... / pk_live_...).
 // Not required for Checkout redirect flow, but useful if you add Stripe.js later.
-window.STRIPE_PUBLISHABLE_KEY = "pk_test_51U0PmYFQYuVwt6qNCIMxSxHothG7qRIKIRwWEpNA7g39U66Hq8nRW3IAQpZmrH6i7Cag1W9V8Feu0jAFVyqSUMHW00CAqikpVq";
+window.STRIPE_PUBLISHABLE_KEY = "pk_live_51U0PmYFQYuVwt6qN8IkX3y7Vx0rBYTMIWKRv4LIzMQawJo0jbBvHUAGbH8mXXEcdBtpd0Qeys2hR56LDktHfUDfP008lTbQ5Va";
