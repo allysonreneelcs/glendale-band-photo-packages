@@ -203,8 +203,8 @@
       if (paid) {
         title.textContent = digital ? "Digital rights unlocked" : "Payment received";
         lead.textContent = digital
-          ? "Thanks — digital rights are paid. Open your gallery, and the photographer will enable Lightroom downloads for your album."
-          : "Thanks — your card payment went through and your photo order is on its way to the photographer.";
+          ? "Thanks — digital rights are paid. Open the gallery with your access code to download ALL photos (checkboxes only affect prints)."
+          : "Thanks — your card payment went through and your photo order is on its way to the photographer. If your package includes digital, open the gallery to download every photo.";
 
         let verified = null;
         if (sessionId) {
@@ -213,7 +213,7 @@
           try {
             verified = await verifyPayment(sessionId);
             if (verified && verified.unlocked) {
-              notify.textContent = "Gallery digital access is marked paid for code " + (verified.accessCode || "") + ".";
+              notify.textContent = "Digital access is on for code " + (verified.accessCode || "") + " — all gallery photos can be downloaded.";
               if (verified.accessCode) showGalleryLink(verified.accessCode);
             } else if (verified && verified.includesDigital) {
               notify.textContent = verified.reminder || "Payment recorded. If you have a gallery code, ask the photographer to link digital access.";

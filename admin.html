@@ -662,7 +662,7 @@
         } else if (btn.dataset.act === "toggle-digital") {
           const next = !student.digitalPaid;
           const tip = next
-            ? "Mark digital PAID for " + student.studentName + "? Parents will be able to download from the gallery."
+            ? "Mark digital PAID for " + student.studentName + "? Parents will be able to download ALL photos in this gallery (not only print-selected ones)."
             : "Mark digital UNPAID for " + student.studentName + "?";
           if (!confirm(tip)) return;
           await api("/api/admin/student?code=" + encodeURIComponent(code), {

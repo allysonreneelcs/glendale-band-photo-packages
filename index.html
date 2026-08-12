@@ -418,7 +418,7 @@
   <div class="wrap">
     <header>
       <h1 class="brand"><span>Student photo gallery</span> Glendale Highschool Marching Band</h1>
-      <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Check the box under each photo you want printed. Unpaid previews are watermarked. Downloads unlock after Digital Rights are paid. Scroll down to order prints or ask Allyson a question.</p>
+      <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Check the box under each photo you want <em>printed</em>. Unpaid previews are watermarked. Digital Rights unlocks clean downloads of <strong>every</strong> photo in the gallery — not only the ones you check. Scroll down to order prints or ask Allyson a question.</p>
       <p class="site-links"><a href="#order-section">Order prints</a> · <a href="#questions">Questions</a> · <a href="privacy.html">Privacy policy</a></p>
     </header>
 
@@ -450,13 +450,13 @@
 
       <div class="selection-bar hidden" id="selection-bar" aria-live="polite">
         <h3 id="selection-count">No photos selected for print</h3>
-        <p id="selection-hint">Check the box under each photo you want printed. Print packages (Keepsake, Showcase, All-Star): first photo is full package price; each extra selected photo is the same package at 50% off. Digital Rights unlocks downloads for the whole gallery — no print selection needed.</p>
+        <p id="selection-hint">Checkboxes are for <strong>lab prints only</strong>. Print packages (Keepsake, Showcase, All-Star): first photo is full package price; each extra selected photo is the same package at 50% off. Digital Rights (or digital included in Showcase/All-Star) unlocks downloads for <strong>all</strong> photos in this gallery — checkboxes do not limit digital.</p>
         <p style="margin-top:0.45rem"><a href="#order-section">Continue to order form ↓</a></p>
       </div>
 
       <div class="buy-box hidden" id="buy-box">
         <h3>Unlock digital downloads — $20</h3>
-        <p class="note">Digital Rights turns on downloads of these photos for personal use. Preview viewing stays on this page either way.</p>
+        <p class="note">Digital Rights unlocks clean downloads of <strong>all</strong> photos in this student’s gallery (not just checkbox-selected ones). Checkboxes are only for which photos get printed. Preview viewing stays on this page either way.</p>
         <label for="email">Parent email (for receipt)</label>
         <input id="email" type="email" placeholder="you@example.com" style="text-transform:none;letter-spacing:0" />
         <div class="actions">
@@ -779,13 +779,13 @@
       if (student.digitalPaid) {
         badge.textContent = "Digital unlocked";
         badge.className = "badge paid";
-        note.textContent = "Digital rights are on. You can download photos below. Please don’t reshare full-resolution files publicly. Check photos you want printed before ordering a print package.";
+        note.textContent = "Digital rights are on — you can download every photo below (Download all, or open each photo). Please don’t reshare full-resolution files publicly. Checkboxes only choose which photos get lab prints.";
         buyBox.classList.add("hidden");
         downloadAllBtn.classList.remove("hidden");
       } else {
         badge.textContent = "View only";
         badge.className = "badge preview";
-        note.textContent = "Preview gallery with watermarks. Check the box under each photo you want printed, then order below. Screenshots can’t be fully blocked — unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads.";
+        note.textContent = "Preview gallery with watermarks. Check the box under each photo you want printed, then order below. Screenshots can’t be fully blocked — unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads of all photos.";
         buyBox.classList.remove("hidden");
         downloadAllBtn.classList.add("hidden");
       }
@@ -845,14 +845,41 @@
 
     downloadAllBtn.addEventListener("click", async () => {
       if (!current || !current.digitalPaid) return;
-      for (const p of current.photos || []) {
-        const a = document.createElement("a");
-        a.href = photoUrl(current.code, p.id, true);
-        a.download = p.filename || "photo.jpg";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        await new Promise((r) => setTimeout(r, 350));
+      // Always every gallery photo — never limited to print checkboxes.
+      const photos = current.photos || [];
+      if (!photos.length) return;
+      downloadAllBtn.disabled = true;
+      const originalLabel = downloadAllBtn.textContent;
+      try {
+        for (let i = 0; i < photos.length; i++) {
+          const p = photos[i];
+          downloadAllBtn.textContent = "Downloading " + (i + 1) + "/" + photos.length + "…";
+          try {
+            const res = await fetch(photoUrl(current.code, p.id, true));
+            if (!res.ok) throw new Error("download failed");
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = p.filename || ("photo-" + (i + 1) + ".jpg");
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+          } catch (_) {
+            // Fallback: navigate-style download for this file
+            const a = document.createElement("a");
+            a.href = photoUrl(current.code, p.id, true);
+            a.download = p.filename || "photo.jpg";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          }
+          await new Promise((r) => setTimeout(r, 450));
+        }
+      } finally {
+        downloadAllBtn.textContent = originalLabel;
+        downloadAllBtn.disabled = false;
       }
     });
 

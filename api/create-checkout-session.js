@@ -261,11 +261,16 @@ module.exports = async function handler(req, res) {
         packageContents: contents.slice(0, 450),
         labPrintChecklist: labChecklist.slice(0, 450),
         includesDigital: includesDigital ? "1" : "0",
+        // When digital is included/paid, unlock is always the whole gallery — not selectedPhotoIds.
+        digitalUnlockScope: includesDigital ? "all_gallery_photos" : "none",
         accessCode: accessCode || "",
         addons: addonParts.length ? addonParts.join(", ").slice(0, 450) : "None",
         selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),
         selectedPhotos: (selectedPhotosText || (digitalOnly ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
         selectedPhotoIds: selectedPhotoIds.slice(0, 450),
+        selectedPhotosNote: needsPrintSelection
+          ? "Print selection for lab only; digital (if included) unlocks ALL gallery photos"
+          : (digitalOnly ? "Digital unlocks ALL gallery photos; no print selection" : "—"),
         multiPhotoPricing: pricingLabel.slice(0, 450),
         signature,
         date,

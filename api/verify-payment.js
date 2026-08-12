@@ -85,6 +85,8 @@ module.exports = async function handler(req, res) {
       Add_ons: meta.addons || "None",
       Selected_photos: meta.selectedPhotos || "—",
       Photo_count: meta.selectedPhotoCount || "—",
+      Selected_photos_note: meta.selectedPhotosNote || "—",
+      Digital_unlock: includesDigital ? "ALL gallery photos (not only print-selected)" : "None",
       Multi_photo_pricing: meta.multiPhotoPricing || "—",
       Package_amount_charged: meta.packageAmountCharged || "—",
       Grand_total: amountTotal || "—",
@@ -105,7 +107,7 @@ module.exports = async function handler(req, res) {
       student: student ? publicStudent(student) : null,
       orderForEmail,
       reminder: unlocked
-        ? "Digital rights are marked paid in our system. In Lightroom, turn ON “Allow JPG Downloads” for this student’s shared album so parents can download."
+        ? "Digital rights are marked paid. Parents can download ALL photos for this access code from the gallery (not only print-selected photos)."
         : includesDigital
           ? "Payment succeeded, but no matching student access code was linked. Mark digital paid in Admin if needed."
           : "Payment succeeded. This package does not include digital rights.",

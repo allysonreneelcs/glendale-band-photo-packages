@@ -28,8 +28,8 @@ module.exports = async function handler(req, res) {
     sendJson(res, 200, headers, {
       student: publicStudent(student, { includeUrl: false }),
       tip: student.digitalPaid
-        ? "Digital rights are unlocked. You can download photos from this page."
-        : "Preview gallery is on this page with watermarks. Pay for Digital Rights to unlock downloads.",
+        ? "Digital rights are unlocked. You can download ALL photos in this gallery (print checkboxes only choose lab prints)."
+        : "Preview gallery is on this page with watermarks. Pay for Digital Rights to unlock downloads of every photo.",
     });
   } catch (err) {
     console.error("gallery lookup error:", err.message);

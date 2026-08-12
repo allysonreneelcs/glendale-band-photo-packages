@@ -37,6 +37,8 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // Digital unlock is whole-gallery: any photo id on this access code may download.
+    // Print checkbox selection must never gate downloads.
     if (download && !result.student.digitalPaid) {
       res.writeHead(403, { ...headers, "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Downloads unlock after Digital Rights are paid." }));
