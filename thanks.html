@@ -75,6 +75,7 @@
     }
     .summary dd {
       margin: 0.1rem 0 0;
+      word-break: break-word;
     }
     a {
       color: var(--navy);
@@ -123,8 +124,12 @@
         ["Package", order.Package],
         ["Package contents", order.Package_contents],
         ["Lab print checklist", order.Lab_print_checklist],
+        ["Photos selected for print", order.Selected_photos],
+        ["Photo previews", order.Photo_preview_links],
+        ["Gallery link", order.Gallery_link],
+        ["Delivery", order.Delivery],
         ["Add-ons", order.Add_ons],
-        ["Package total", order.Package_total],
+        ["Package total", order.Package_total || order.Package_amount_charged],
         ["Add-on total", order.Addon_total],
         ["Total", order.Grand_total],
         ["Parent", order.Parent],
@@ -152,12 +157,91 @@
       galleryLink.hidden = false;
     }
 
-    async function emailOrder(payload) {
-      const orderEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
-      if (!orderEmail || orderEmail.includes("REPLACE")) {
-        throw new Error("Order email isn’t connected yet.");
+    function galleryAbsoluteUrl(code) {
+      const c = String(code || "").trim();
+      if (!c || c === "—") return "—";
+      try {
+        return new URL("index.html?code=" + encodeURIComponent(c), window.location.href).href;
+      } catch {
+        return "index.html?code=" + encodeURIComponent(c);
       }
-      const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(orderEmail), {
+    }
+
+    function buildPhotoPreviewLinks(order) {
+      const apiBase = String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
+      const code = String(order.Access_code || accessCode || "").trim();
+      const ids = String(order.Selected_photo_ids || "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (!apiBase || !code || !ids.length) {
+        return order.Photo_preview_links && order.Photo_preview_links !== "—"
+          ? order.Photo_preview_links
+          : "—";
+      }
+      const nameById = {};
+      String(order.Selected_photos || "").split(/;\s*/).forEach((part) => {
+        const m = String(part).trim().match(/^\d+\.\s*(.+?)(?:\s*\[([^\]]+)\])?\s*$/);
+        if (!m) return;
+        const filename = m[1].trim();
+        const id = (m[2] || filename).trim();
+        if (id) nameById[id] = filename;
+      });
+      return ids
+        .map((id, i) => {
+          const label = nameById[id] || id;
+          const url = apiBase + "/api/photo?code=" + encodeURIComponent(code) + "&id=" + encodeURIComponent(id);
+          return (i + 1) + ". " + label + " — " + url;
+        })
+        .join(" | ");
+    }
+
+    function deliveryForOrder(order) {
+      if (order.Delivery && order.Delivery !== "—") return order.Delivery;
+      const pkg = String(order.Package || "").toLowerCase();
+      const lab = String(order.Lab_print_checklist || "").toLowerCase();
+      const digitalUnlock = String(order.Digital_unlock || "").toLowerCase();
+      const isDigitalOnly = digital || /^digital rights/.test(pkg) || lab.includes("digital only");
+      const hasPrints = !isDigitalOnly && (lab.includes("print") || /\d/.test(lab) || /keepsake|showcase|all-star|allstar/.test(pkg));
+      const includesDigital =
+        digitalUnlock.includes("all gallery") ||
+        /showcase|all-star|allstar|digital/.test(pkg);
+
+      if (isDigitalOnly) {
+        return "Digital Rights: ALL gallery photos are unlocked for download online. This digital-only order does not include lab prints for school delivery.";
+      }
+      if (hasPrints && includesDigital) {
+        return "Your selected photos will be printed and then brought to the school for delivery. Digital downloads unlock ALL gallery photos online (not only the print-selected ones).";
+      }
+      if (hasPrints) {
+        return "Your selected photos will be printed and then brought to the school for delivery.";
+      }
+      return "If your package includes prints, they will be printed and then brought to the school for delivery.";
+    }
+
+    function enrichOrderForEmail(order) {
+      const code = String(order.Access_code || accessCode || "").trim() || "—";
+      const student = order.Student || "Student";
+      const enriched = Object.assign({}, order, {
+        Access_code: code,
+        Gallery_link: order.Gallery_link && order.Gallery_link !== "—"
+          ? order.Gallery_link
+          : galleryAbsoluteUrl(code),
+        Photo_preview_links: buildPhotoPreviewLinks(order),
+        Delivery: deliveryForOrder(order),
+        _template: "table",
+        _captcha: "false",
+      });
+      if (!enriched._subject || /pending/i.test(String(enriched.Payment || ""))) {
+        enriched._subject = code !== "—"
+          ? "Order confirmation — Glendale band photos — " + student + " — " + code
+          : "Order confirmation — Glendale band photos — " + student;
+      }
+      return enriched;
+    }
+
+    async function formSubmitTo(toEmail, payload) {
+      const response = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(toEmail), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -169,6 +253,38 @@
       if (!response.ok) {
         throw new Error(result.message || "Could not send order email.");
       }
+      return result;
+    }
+
+    /**
+     * Dual confirmation via one FormSubmit post to the photographer:
+     * - Full order table (photos, package, delivery, totals)
+     * - _cc parent email (reliable; parent does not need FormSubmit activation)
+     * - _replyto parent so Allyson can reply easily
+     */
+    async function emailOrderConfirmations(order) {
+      const photographerEmail = (window.BAND_PHOTO_ORDER_EMAIL || "").trim();
+      if (!photographerEmail || photographerEmail.includes("REPLACE")) {
+        throw new Error("Order email isn’t connected yet.");
+      }
+
+      const enriched = enrichOrderForEmail(order);
+      const parentEmail = String(enriched.Email || "").trim();
+      const parentOk =
+        parentEmail &&
+        parentEmail.includes("@") &&
+        parentEmail.toLowerCase() !== photographerEmail.toLowerCase();
+
+      const photographerPayload = Object.assign({}, enriched, {
+        _subject: enriched._subject || "Order confirmation — Glendale band photos",
+      });
+      if (parentOk) {
+        photographerPayload._replyto = parentEmail;
+        photographerPayload._cc = parentEmail;
+      }
+
+      await formSubmitTo(photographerEmail, photographerPayload);
+      return { parentCc: parentOk };
     }
 
     async function verifyPayment(sessionId) {
@@ -203,8 +319,8 @@
       if (paid) {
         title.textContent = digital ? "Digital rights unlocked" : "Payment received";
         lead.textContent = digital
-          ? "Thanks — digital rights are paid. Open the gallery with your access code to download ALL photos (checkboxes only affect prints)."
-          : "Thanks — your card payment went through and your photo order is on its way to the photographer. If your package includes digital, open the gallery to download every photo.";
+          ? "Thanks — digital rights are paid. Open the gallery with your access code to download ALL photos (checkboxes only affect prints). A confirmation was emailed to you and the photographer."
+          : "Thanks — your card payment went through. Print packages: selected photos will be printed and brought to the school for delivery. If digital is included, open the gallery to download every photo.";
 
         let verified = null;
         if (sessionId) {
@@ -231,17 +347,22 @@
           if (!order.Payment || /pending/i.test(order.Payment)) {
             order.Payment = "Paid online via Stripe" + (sessionId ? " · session " + sessionId : "");
           }
+          order = enrichOrderForEmail(order);
           renderSummary(order);
           if (!notify.textContent) {
             notify.hidden = false;
-            notify.textContent = "Sending order details to the photographer…";
+            notify.textContent = "Sending order confirmations…";
           }
           try {
             const sentKey = "bandPhotoOrderSent:" + (sessionId || order.Student + order.Grand_total);
-            if (!sessionStorage.getItem(sentKey) && !digital) {
-              await emailOrder(order);
+            if (!sessionStorage.getItem(sentKey)) {
+              const result = await emailOrderConfirmations(order);
               sessionStorage.setItem(sentKey, "1");
-              notify.textContent = (notify.textContent ? notify.textContent + " " : "") + "Order details were emailed to the photographer.";
+              const who = result.parentCc
+                ? "you and the photographer"
+                : "the photographer";
+              notify.textContent = (notify.textContent ? notify.textContent + " " : "") +
+                "Order confirmation emailed to " + who + ".";
             }
             sessionStorage.removeItem(ORDER_STORAGE_KEY);
           } catch (err) {
@@ -252,7 +373,10 @@
           lead.textContent = "Thanks — your card payment went through. If you don’t hear back, contact the photographer and mention your Stripe payment.";
         }
       } else {
-        if (order) renderSummary(order);
+        if (order) {
+          order = enrichOrderForEmail(order);
+          renderSummary(order);
+        }
         sessionStorage.removeItem(ORDER_STORAGE_KEY);
       }
     })();

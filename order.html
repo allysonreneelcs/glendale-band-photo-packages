@@ -703,7 +703,7 @@
           </div>
         </div>
         <button class="submit-btn web-only" type="submit" id="submit-btn-label">Pay &amp; submit order</button>
-        <p class="note" style="margin-top:0.55rem;" id="submit-help">You’ll pay securely with Stripe, then we’ll email the photographer your order details.</p>
+        <p class="note" style="margin-top:0.55rem;" id="submit-help">You’ll pay securely with Stripe, then we’ll email a confirmation to you and the photographer (photos, package, and delivery details).</p>
       </div>
     </div>
 
@@ -756,7 +756,7 @@
       if (mainBtn) mainBtn.textContent = "Pay & submit order";
 
       if (onlineReady) {
-        help.textContent = "You’ll pay securely with Stripe, then we’ll email the photographer your order details.";
+        help.textContent = "You’ll pay securely with Stripe, then we’ll email a confirmation to you and the photographer (photos, package, and delivery details).";
         note.textContent = "Orders are placed by paying online with card (Stripe Checkout). You’ll be redirected to pay securely, then returned here.";
       } else {
         help.textContent = "Online card payment isn’t connected yet. Ask the photographer to finish Stripe setup.";
@@ -856,6 +856,47 @@
         .join("; ");
     }
 
+    function selectedPhotoIdsText() {
+      if (!selectedPhotos.length) return "";
+      return selectedPhotos.map((p) => p.id).filter(Boolean).join(",");
+    }
+
+    function photoPreviewLinksText(accessCode) {
+      const apiBase = String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
+      const code = String(accessCode || "").trim().toUpperCase();
+      if (!apiBase || !code || !selectedPhotos.length) return "—";
+      return selectedPhotos
+        .map((p, i) => {
+          const label = p.filename || p.id;
+          const url = apiBase + "/api/photo?code=" + encodeURIComponent(code) + "&id=" + encodeURIComponent(p.id);
+          return (i + 1) + ". " + label + " — " + url;
+        })
+        .join(" | ");
+    }
+
+    function galleryLinkText(accessCode) {
+      const code = String(accessCode || "").trim().toUpperCase();
+      if (!code) return "—";
+      try {
+        return new URL("index.html?code=" + encodeURIComponent(code), window.location.href).href;
+      } catch {
+        return "index.html?code=" + encodeURIComponent(code);
+      }
+    }
+
+    function deliveryMessage(packageKey) {
+      if (packageKey === "digital") {
+        return "Digital Rights: ALL gallery photos are unlocked for download online. This digital-only order does not include lab prints for school delivery.";
+      }
+      if (packageKey === "keepsake") {
+        return "Your selected photos will be printed and then brought to the school for delivery.";
+      }
+      if (packageKey === "showcase" || packageKey === "allstar") {
+        return "Your selected photos will be printed and then brought to the school for delivery. Digital downloads unlock ALL gallery photos online (not only the print-selected ones).";
+      }
+      return "If your package includes prints, they will be printed and then brought to the school for delivery.";
+    }
+
     function addonSummary() {
       const parts = [];
       form.querySelectorAll(".qty").forEach((input) => {
@@ -941,6 +982,7 @@
       const unit = selected ? Number(selected.dataset.price) : 0;
       const count = packageNeedsPrintSelection(packageKey) ? selectedPhotos.length : 0;
 
+      const needsPrint = packageNeedsPrintSelection(packageKey);
       return {
         _subject: subject,
         _template: "table",
@@ -953,11 +995,18 @@
         Package_contents: packageContentsText(packageKey),
         Lab_print_checklist: labPrintChecklist(packageKey),
         Add_ons: addonSummary(),
-        Selected_photos: packageNeedsPrintSelection(packageKey)
+        Selected_photos: needsPrint
           ? selectedPhotosText()
           : (packageKey === "digital" ? "N/A — digital unlock (all photos)" : "—"),
-        Photo_count: packageNeedsPrintSelection(packageKey) ? String(selectedPhotos.length) : (packageKey === "digital" ? "0" : "—"),
-        Multi_photo_pricing: packageNeedsPrintSelection(packageKey)
+        Selected_photo_ids: needsPrint ? selectedPhotoIdsText() : "",
+        Photo_count: needsPrint ? String(selectedPhotos.length) : (packageKey === "digital" ? "0" : "—"),
+        Photo_preview_links: needsPrint ? photoPreviewLinksText(accessCode) : "—",
+        Gallery_link: galleryLinkText(accessCode),
+        Selected_photos_note: needsPrint
+          ? "Print selection for lab only; digital (if included) unlocks ALL gallery photos"
+          : (packageKey === "digital" ? "Digital unlocks ALL gallery photos; no print selection" : "—"),
+        Delivery: deliveryMessage(packageKey),
+        Multi_photo_pricing: needsPrint
           ? multiPhotoPricingLabel(unit, count)
           : "N/A",
         Package_total: "$" + (pkgTotal.value || "0"),
