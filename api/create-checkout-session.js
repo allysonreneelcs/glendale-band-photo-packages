@@ -10,6 +10,9 @@ const {
   PACKAGES,
   ADDONS,
   packageIncludesDigital,
+  packageNeedsPrintSelection,
+  multiPhotoPackageAmount,
+  multiPhotoPricingLabel,
   packageContentsText,
   labPrintChecklist,
 } = require("../lib/packages");
@@ -31,6 +34,29 @@ function clampQty(value, max) {
 
 function truncate(str, max) {
   return String(str || "").trim().slice(0, max);
+}
+
+/** Normalize selectedPhotos from client into { id, filename }[], max 40. */
+function normalizeSelectedPhotos(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const item of raw) {
+    if (out.length >= 40) break;
+    let id = "";
+    let filename = "";
+    if (typeof item === "string") {
+      id = truncate(item, 80);
+      filename = id;
+    } else if (item && typeof item === "object") {
+      id = truncate(item.id || item.photoId || "", 80);
+      filename = truncate(item.filename || item.name || id, 120);
+    }
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, filename: filename || id });
+  }
+  return out;
 }
 
 module.exports = async function handler(req, res) {
@@ -88,6 +114,20 @@ module.exports = async function handler(req, res) {
 
   // Gallery "buy digital" flow can send minimal contact fields.
   const digitalOnly = Boolean(body.digitalOnly) || packageKey === "digital";
+  const needsPrintSelection = !digitalOnly && packageNeedsPrintSelection(packageKey);
+  const selectedPhotos = needsPrintSelection ? normalizeSelectedPhotos(body.selectedPhotos) : [];
+  const selectedPhotoCount = needsPrintSelection
+    ? selectedPhotos.length
+    : (digitalOnly ? 0 : Math.max(1, clampQty(body.selectedPhotoCount, 40) || 1));
+
+  if (needsPrintSelection && selectedPhotos.length < 1) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      error: "Select at least one photo to print (checkboxes under the gallery thumbnails).",
+    }));
+    return;
+  }
+
   const student = truncate(body.student, 80) || (accessCode ? `Access code ${accessCode}` : "");
   const parent = truncate(body.parent, 80) || (digitalOnly ? "Gallery digital unlock" : "");
   const email = truncate(body.email, 120);
@@ -120,15 +160,30 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  const photoCountForPrice = needsPrintSelection ? selectedPhotos.length : 1;
+  const packageAmount = digitalOnly
+    ? pkg.unitAmount
+    : multiPhotoPackageAmount(pkg.unitAmount, photoCountForPrice);
+  const pricingLabel = digitalOnly
+    ? "Digital Rights (full gallery)"
+    : multiPhotoPricingLabel(pkg.unitAmount, photoCountForPrice);
+
+  const packageLineName = needsPrintSelection && photoCountForPrice > 1
+    ? `Band photo package: ${pkg.name} (${photoCountForPrice} photos)`
+    : `Band photo package: ${pkg.name}`;
+
   const lineItems = [
     {
       price_data: {
         currency: "usd",
         product_data: {
-          name: `Band photo package: ${pkg.name}`,
-          description: accessCode ? `Student access code: ${accessCode}` : `Student: ${student}`,
+          name: packageLineName,
+          description: [
+            accessCode ? `Student access code: ${accessCode}` : `Student: ${student}`,
+            pricingLabel,
+          ].filter(Boolean).join(" · ").slice(0, 450),
         },
-        unit_amount: pkg.unitAmount,
+        unit_amount: packageAmount,
       },
       quantity: 1,
     },
@@ -137,6 +192,7 @@ module.exports = async function handler(req, res) {
   const addonParts = [];
   const addonQtyMeta = {};
   const addons = body.addons && typeof body.addons === "object" ? body.addons : {};
+  let addonCents = 0;
   if (!digitalOnly) {
     for (const [key, info] of Object.entries(ADDONS)) {
       const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
@@ -151,13 +207,35 @@ module.exports = async function handler(req, res) {
           quantity: qty,
         });
         addonParts.push(`${qty} × ${info.name}`);
+        addonCents += info.unitAmount * qty;
       }
+    }
+  }
+
+  const expectedTotal = packageAmount + addonCents;
+  if (body.expectedTotalCents != null && body.expectedTotalCents !== "") {
+    const clientTotal = Number(body.expectedTotalCents);
+    if (Number.isFinite(clientTotal) && Math.round(clientTotal) !== expectedTotal) {
+      res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        error: "Order total did not match. Refresh the page and try again.",
+        expectedTotalCents: expectedTotal,
+      }));
+      return;
     }
   }
 
   const includesDigital = packageIncludesDigital(packageKey);
   const contents = packageContentsText(packageKey);
-  const labChecklist = digitalOnly ? "Digital only — no lab prints" : labPrintChecklist(packageKey, addonQtyMeta) || "None";
+  const labChecklist = digitalOnly
+    ? "Digital only — no lab prints"
+    : labPrintChecklist(packageKey, addonQtyMeta, needsPrintSelection ? selectedPhotos.length : 1) || "None";
+
+  const selectedPhotosText = selectedPhotos
+    .map((p, i) => `${i + 1}. ${p.filename}${p.id && p.id !== p.filename ? ` [${p.id}]` : ""}`)
+    .join("; ");
+  const selectedPhotoIds = selectedPhotos.map((p) => p.id).join(",");
+
   const stripe = new Stripe(secret);
 
   try {
@@ -179,11 +257,16 @@ module.exports = async function handler(req, res) {
         package: pkg.name,
         packageKey,
         packagePrice: `$${(pkg.unitAmount / 100).toFixed(0)}`,
+        packageAmountCharged: `$${(packageAmount / 100).toFixed(2).replace(/\.00$/, "")}`,
         packageContents: contents.slice(0, 450),
         labPrintChecklist: labChecklist.slice(0, 450),
         includesDigital: includesDigital ? "1" : "0",
         accessCode: accessCode || "",
         addons: addonParts.length ? addonParts.join(", ").slice(0, 450) : "None",
+        selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),
+        selectedPhotos: (selectedPhotosText || (digitalOnly ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
+        selectedPhotoIds: selectedPhotoIds.slice(0, 450),
+        multiPhotoPricing: pricingLabel.slice(0, 450),
         signature,
         date,
         source: "glendale-band-photo-order",

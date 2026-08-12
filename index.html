@@ -138,8 +138,13 @@
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 0.65rem;
+      gap: 0.85rem 0.65rem;
       margin: 0.85rem 0 1rem;
+    }
+    .photo-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
     }
     .thumb {
       position: relative;
@@ -149,6 +154,11 @@
       background: #13263f;
       padding: 0;
       cursor: zoom-in;
+      width: 100%;
+    }
+    .photo-card.is-selected .thumb {
+      border-color: var(--navy);
+      box-shadow: inset 0 0 0 2px rgba(30, 58, 95, 0.35);
     }
     .thumb img {
       width: 100%;
@@ -172,6 +182,52 @@
       font-size: 0.85rem;
       background:
         repeating-linear-gradient(-18deg, transparent 0 28px, rgba(255,255,255,0.05) 28px 30px);
+    }
+    .photo-select {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.4rem;
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--navy-deep);
+      letter-spacing: 0;
+      text-transform: none;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+    .photo-select input {
+      width: 1.05rem;
+      height: 1.05rem;
+      margin: 0.1rem 0 0;
+      flex-shrink: 0;
+      accent-color: var(--navy);
+      text-transform: none;
+      letter-spacing: 0;
+      border: none;
+      padding: 0;
+    }
+    .selection-bar {
+      margin: 0 0 1rem;
+      padding: 0.85rem 1rem;
+      border: 1.5px solid var(--navy);
+      background: #eef3f8;
+    }
+    .selection-bar h3 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+      color: var(--navy-deep);
+    }
+    .selection-bar p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .selection-bar strong { color: var(--navy-deep); }
+    .selection-bar a {
+      color: var(--navy);
+      font-weight: 700;
     }
     .lightbox {
       position: fixed;
@@ -362,7 +418,7 @@
   <div class="wrap">
     <header>
       <h1 class="brand"><span>Student photo gallery</span> Glendale Highschool Marching Band</h1>
-      <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Unpaid previews are watermarked. Downloads unlock after Digital Rights are paid. Scroll down to order prints or ask Allyson a question.</p>
+      <p class="lead">Enter the access code from your photo slip to view this student’s photos right here. Check the box under each photo you want printed. Unpaid previews are watermarked. Downloads unlock after Digital Rights are paid. Scroll down to order prints or ask Allyson a question.</p>
       <p class="site-links"><a href="#order-section">Order prints</a> · <a href="#questions">Questions</a> · <a href="privacy.html">Privacy policy</a></p>
     </header>
 
@@ -392,6 +448,12 @@
       <div id="photo-grid" class="grid" aria-live="polite"></div>
       <div id="empty-photos" class="empty hidden">Photos are not uploaded yet. Please check back soon.</div>
 
+      <div class="selection-bar hidden" id="selection-bar" aria-live="polite">
+        <h3 id="selection-count">No photos selected for print</h3>
+        <p id="selection-hint">Check the box under each photo you want printed. Print packages (Keepsake, Showcase, All-Star): first photo is full package price; each extra selected photo is the same package at 50% off. Digital Rights unlocks downloads for the whole gallery — no print selection needed.</p>
+        <p style="margin-top:0.45rem"><a href="#order-section">Continue to order form ↓</a></p>
+      </div>
+
       <div class="buy-box hidden" id="buy-box">
         <h3>Unlock digital downloads — $20</h3>
         <p class="note">Digital Rights turns on downloads of these photos for personal use. Preview viewing stays on this page either way.</p>
@@ -407,7 +469,7 @@
     <section class="order-embed" id="order-section" aria-label="Order prints and packages">
       <div class="order-embed-head">
         <h2>Order prints &amp; packages</h2>
-        <p class="note" style="margin:0">Use the full order form below. If you already entered a gallery code, it will be filled in for you.</p>
+        <p class="note" style="margin:0" id="order-embed-note">Use the full order form below. If you already entered a gallery code, it will be filled in for you. Select photos above before ordering print packages.</p>
       </div>
       <iframe
         id="order-frame"
@@ -457,6 +519,10 @@
     <div class="lightbox-inner locked" id="lightbox-inner">
       <img id="lightbox-img" alt="Student photo preview" />
       <div class="lightbox-bar">
+        <label class="photo-select" id="lightbox-select-wrap" style="color:#fff;align-items:center">
+          <input type="checkbox" id="lightbox-select" />
+          <span>Print this photo</span>
+        </label>
         <button type="button" class="ghost" id="lightbox-close">Close</button>
         <button type="button" class="hidden" id="lightbox-download">Download this photo</button>
       </div>
@@ -472,13 +538,18 @@
     const buyBox = document.getElementById("buy-box");
     const photoGrid = document.getElementById("photo-grid");
     const emptyPhotos = document.getElementById("empty-photos");
+    const selectionBar = document.getElementById("selection-bar");
+    const selectionCountEl = document.getElementById("selection-count");
     const lightbox = document.getElementById("lightbox");
     const lightboxInner = document.getElementById("lightbox-inner");
     const lightboxImg = document.getElementById("lightbox-img");
+    const lightboxSelect = document.getElementById("lightbox-select");
     const downloadAllBtn = document.getElementById("download-all");
     const lightboxDownload = document.getElementById("lightbox-download");
     let current = null;
     let activePhotoId = null;
+    /** @type {Map<string, {id: string, filename: string}>} */
+    const selectedPhotos = new Map();
 
     function apiBase() {
       return String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
@@ -502,6 +573,64 @@
       return cleaned;
     }
 
+    function getSelectedPhotoList() {
+      return Array.from(selectedPhotos.values());
+    }
+
+    function updateSelectionUi() {
+      const list = getSelectedPhotoList();
+      const n = list.length;
+      if (selectionBar) {
+        selectionBar.classList.toggle("hidden", !(current && current.photos && current.photos.length));
+      }
+      if (selectionCountEl) {
+        if (n === 0) selectionCountEl.textContent = "No photos selected for print";
+        else if (n === 1) selectionCountEl.textContent = "1 photo selected for print";
+        else selectionCountEl.textContent = n + " photos selected for print";
+      }
+      const note = document.getElementById("order-embed-note");
+      if (note) {
+        if (n === 0) {
+          note.textContent = "Select photos above (checkboxes) before ordering Keepsake, Showcase, or All-Star. Digital Rights does not need print selection. Your access code is filled in when you open a gallery.";
+        } else if (n === 1) {
+          note.textContent = "1 photo selected. Print packages charge the full package price for that photo. Extra selected photos (2+) are the same package at 50% off each.";
+        } else {
+          note.textContent = n + " photos selected. Pricing: 1st photo = full package price; each additional photo = same package at 50% off. Example: Showcase $60 × 3 photos = $60 + $30 + $30 = $120.";
+        }
+      }
+      photoGrid.querySelectorAll(".photo-card").forEach((card) => {
+        const id = card.getAttribute("data-photo-id");
+        card.classList.toggle("is-selected", selectedPhotos.has(id));
+        const cb = card.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = selectedPhotos.has(id);
+      });
+      if (lightboxSelect && activePhotoId) {
+        lightboxSelect.checked = selectedPhotos.has(activePhotoId);
+      }
+      pushSelectionToOrderFrame();
+    }
+
+    function setPhotoSelected(id, filename, checked) {
+      if (!id) return;
+      if (checked) selectedPhotos.set(id, { id, filename: filename || id });
+      else selectedPhotos.delete(id);
+      updateSelectionUi();
+    }
+
+    function pushSelectionToOrderFrame() {
+      const frame = document.getElementById("order-frame");
+      if (!frame || !frame.contentWindow) return;
+      const payload = {
+        type: "band-photo-selection",
+        code: current ? current.code : "",
+        student: current ? (current.studentName || "") : "",
+        photos: getSelectedPhotoList(),
+      };
+      try {
+        frame.contentWindow.postMessage(payload, "*");
+      } catch (_) { /* ignore */ }
+    }
+
     // Best-effort: block casual save paths. Cannot fully stop OS screenshots.
     document.addEventListener("contextmenu", (e) => {
       if (e.target.closest("#photo-grid, #lightbox, .thumb, .lightbox-inner")) e.preventDefault();
@@ -519,7 +648,15 @@
       const photos = student.photos || [];
       photoGrid.innerHTML = "";
       emptyPhotos.classList.toggle("hidden", photos.length > 0);
+      const validIds = new Set(photos.map((p) => p.id));
+      for (const id of Array.from(selectedPhotos.keys())) {
+        if (!validIds.has(id)) selectedPhotos.delete(id);
+      }
       photos.forEach((p) => {
+        const card = document.createElement("div");
+        card.className = "photo-card" + (selectedPhotos.has(p.id) ? " is-selected" : "");
+        card.setAttribute("data-photo-id", p.id);
+
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "thumb" + (student.digitalPaid ? "" : " locked");
@@ -530,16 +667,42 @@
         img.loading = "lazy";
         btn.appendChild(img);
         btn.addEventListener("click", () => openLightbox(p.id));
-        photoGrid.appendChild(btn);
+
+        const label = document.createElement("label");
+        label.className = "photo-select";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = selectedPhotos.has(p.id);
+        cb.setAttribute("aria-label", "Select this photo for print");
+        cb.addEventListener("click", (e) => e.stopPropagation());
+        cb.addEventListener("change", () => {
+          setPhotoSelected(p.id, p.filename || "photo.jpg", cb.checked);
+        });
+        const span = document.createElement("span");
+        span.textContent = "Print this photo";
+        label.appendChild(cb);
+        label.appendChild(span);
+
+        card.appendChild(btn);
+        card.appendChild(label);
+        photoGrid.appendChild(card);
       });
+      updateSelectionUi();
     }
 
     function openLightbox(photoId) {
       if (!current) return;
       activePhotoId = photoId;
+      const photo = (current.photos || []).find((p) => p.id === photoId);
       lightboxImg.src = photoUrl(current.code, photoId, false);
       lightboxInner.classList.toggle("locked", !current.digitalPaid);
       lightboxDownload.classList.toggle("hidden", !current.digitalPaid);
+      if (lightboxSelect) {
+        lightboxSelect.checked = selectedPhotos.has(photoId);
+        lightboxSelect.onchange = () => {
+          setPhotoSelected(photoId, (photo && photo.filename) || "photo.jpg", lightboxSelect.checked);
+        };
+      }
       lightbox.classList.remove("hidden");
     }
 
@@ -556,7 +719,12 @@
       if (code) params.set("code", code);
       if (studentName) params.set("student", studentName);
       const src = "order.html?" + params.toString();
-      if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
+      if (frame.getAttribute("src") !== src) {
+        frame.setAttribute("src", src);
+      }
+      // Selection is synced via postMessage so changing checkboxes does not reload the form.
+      frame.onload = () => pushSelectionToOrderFrame();
+      pushSelectionToOrderFrame();
 
       const privacy = document.getElementById("privacy-link");
       if (privacy) {
@@ -575,15 +743,22 @@
 
     window.addEventListener("message", (event) => {
       const data = event.data;
-      if (!data || data.type !== "band-order-height") return;
-      const frame = document.getElementById("order-frame");
-      const height = Number(data.height);
-      if (!frame || !Number.isFinite(height) || height < 200) return;
-      frame.style.height = Math.ceil(height) + "px";
+      if (!data || typeof data !== "object") return;
+      if (data.type === "band-order-height") {
+        const frame = document.getElementById("order-frame");
+        const height = Number(data.height);
+        if (!frame || !Number.isFinite(height) || height < 200) return;
+        frame.style.height = Math.ceil(height) + "px";
+        return;
+      }
+      if (data.type === "band-photo-selection-request") {
+        pushSelectionToOrderFrame();
+      }
     });
 
     function showStudent(student) {
       current = student;
+      selectedPhotos.clear();
       gate.classList.add("hidden");
       gallery.classList.remove("hidden");
       document.getElementById("student-name").textContent = student.studentName || "Student";
@@ -596,6 +771,7 @@
         note.textContent = "This code is active, but photos have not been uploaded yet.";
         buyBox.classList.add("hidden");
         downloadAllBtn.classList.add("hidden");
+        if (selectionBar) selectionBar.classList.add("hidden");
         renderPhotos(student);
         return;
       }
@@ -603,13 +779,13 @@
       if (student.digitalPaid) {
         badge.textContent = "Digital unlocked";
         badge.className = "badge paid";
-        note.textContent = "Digital rights are on. You can download photos below. Please don’t reshare full-resolution files publicly.";
+        note.textContent = "Digital rights are on. You can download photos below. Please don’t reshare full-resolution files publicly. Check photos you want printed before ordering a print package.";
         buyBox.classList.add("hidden");
         downloadAllBtn.classList.remove("hidden");
       } else {
         badge.textContent = "View only";
         badge.className = "badge preview";
-        note.textContent = "Preview gallery with watermarks. Screenshots can’t be fully blocked by any website, so unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads.";
+        note.textContent = "Preview gallery with watermarks. Check the box under each photo you want printed, then order below. Screenshots can’t be fully blocked — unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads.";
         buyBox.classList.remove("hidden");
         downloadAllBtn.classList.add("hidden");
       }
@@ -644,10 +820,13 @@
 
     document.getElementById("change-code").addEventListener("click", () => {
       current = null;
+      selectedPhotos.clear();
       closeLightbox();
       gallery.classList.add("hidden");
       gate.classList.remove("hidden");
+      if (selectionBar) selectionBar.classList.add("hidden");
       syncOrderFrame("");
+      pushSelectionToOrderFrame();
       history.replaceState({}, "", "index.html");
     });
 

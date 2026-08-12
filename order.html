@@ -592,6 +592,17 @@
         </label>
       </div>
       <p class="note">Digital rights = full-resolution file for personal printing and sharing. Not for resale.</p>
+      <p class="note web-only" id="multi-photo-note" style="font-style:normal;color:var(--navy-deep)">
+        <strong>Multi-photo prints:</strong> Select photos in the gallery (checkboxes). First selected photo = full package price; each additional photo = same package at <strong>50% off</strong>. Digital Rights unlocks the whole gallery and does not need print selection.
+      </p>
+    </section>
+
+    <section class="web-only" id="selected-photos-section">
+      <h2>Photos to print</h2>
+      <p class="note" id="selected-photos-summary" style="font-style:normal;margin:0">No photos selected yet. Open the gallery, check the photos you want printed, then return here.</p>
+      <ul id="selected-photos-list" style="margin:0.35rem 0 0;padding-left:1.1rem;color:var(--muted);font-size:0.82rem;display:none"></ul>
+      <input type="hidden" name="selected_photos" id="selected_photos" value="" />
+      <input type="hidden" name="photo_count" id="photo_count" value="0" />
     </section>
 
     <section>
@@ -675,8 +686,12 @@
         <h2>Order total</h2>
         <div class="sum-rows">
           <div class="sum-row">
-            <span>Package</span>
+            <span id="pkg-label">Package</span>
             <div class="money">$<input class="line" id="pkg-total" name="pkg_total" type="text" readonly /></div>
+          </div>
+          <div class="sum-row" id="multi-photo-row" style="display:none">
+            <span id="multi-photo-label">Extra photos (50% off)</span>
+            <div class="money">$<input class="line" id="multi-photo-total" name="multi_photo_total" type="text" readonly /></div>
           </div>
           <div class="sum-row">
             <span>Add-ons</span>
@@ -704,8 +719,15 @@
     const pkgTotal = document.getElementById("pkg-total");
     const addonTotal = document.getElementById("addon-total");
     const grandTotal = document.getElementById("grand-total");
+    const multiPhotoTotal = document.getElementById("multi-photo-total");
+    const multiPhotoRow = document.getElementById("multi-photo-row");
+    const pkgLabel = document.getElementById("pkg-label");
     const statusEl = document.getElementById("status");
     const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
+    /** @type {{id: string, filename: string}[]} */
+    let selectedPhotos = [];
+
+    const PRINT_PACKAGE_KEYS = new Set(["keepsake", "showcase", "allstar"]);
 
     function money(n) {
       return n.toFixed(2).replace(/\.00$/, "");
@@ -786,23 +808,52 @@
       addon_1620: "16×20",
     };
 
+    function packageNeedsPrintSelection(key) {
+      return PRINT_PACKAGE_KEYS.has(key);
+    }
+
+    function multiPhotoPackageAmount(unitDollars, count) {
+      const unit = Math.max(0, Number(unitDollars) || 0);
+      const n = Math.max(0, Math.floor(Number(count) || 0));
+      if (!unit || n < 1) return 0;
+      const half = Math.round(unit * 100 * 0.5) / 100;
+      return unit + half * (n - 1);
+    }
+
+    function multiPhotoPricingLabel(unitDollars, count) {
+      const unit = Math.max(0, Number(unitDollars) || 0);
+      const n = Math.max(0, Math.floor(Number(count) || 0));
+      if (n <= 0) return "No photos selected";
+      if (n === 1) return "1 photo × $" + money(unit) + " package";
+      const half = Math.round(unit * 100 * 0.5) / 100;
+      return "1 × $" + money(unit) + " + " + (n - 1) + " × $" + money(half) + " (50% off each extra photo)";
+    }
+
     function packageContentsText(key) {
       return (PACKAGE_CONTENTS[key] || []).join("; ") || "—";
     }
 
     function labPrintChecklist(key) {
       const totals = {};
+      const sets = packageNeedsPrintSelection(key) ? Math.max(1, selectedPhotos.length) : 1;
       function add(size, qty) {
         if (!size || !qty) return;
         totals[size] = (totals[size] || 0) + qty;
       }
-      (PACKAGE_PRINTS[key] || []).forEach((row) => add(row.size, row.qty));
+      (PACKAGE_PRINTS[key] || []).forEach((row) => add(row.size, row.qty * sets));
       form.querySelectorAll(".qty").forEach((input) => {
         const qty = Number(input.value) || 0;
         if (qty > 0) add(ADDON_SIZES[input.name] || input.dataset.label, qty);
       });
       const lines = Object.entries(totals).map(([size, qty]) => qty + " × " + size);
       return lines.length ? lines.join("; ") : "None (digital only)";
+    }
+
+    function selectedPhotosText() {
+      if (!selectedPhotos.length) return "—";
+      return selectedPhotos
+        .map((p, i) => (i + 1) + ". " + (p.filename || p.id) + (p.id && p.id !== p.filename ? " [" + p.id + "]" : ""))
+        .join("; ");
     }
 
     function addonSummary() {
@@ -826,6 +877,59 @@
       return "Pay online with card (Stripe)";
     }
 
+    function updateSelectedPhotosUi() {
+      const summary = document.getElementById("selected-photos-summary");
+      const listEl = document.getElementById("selected-photos-list");
+      const hidden = document.getElementById("selected_photos");
+      const countInput = document.getElementById("photo_count");
+      const n = selectedPhotos.length;
+      if (countInput) countInput.value = String(n);
+      if (hidden) hidden.value = selectedPhotosText();
+      if (summary) {
+        if (n === 0) {
+          summary.textContent = "No photos selected yet. Open the gallery above, check the photos you want printed, then return here.";
+        } else if (n === 1) {
+          summary.textContent = "1 photo selected for print packages.";
+        } else {
+          summary.textContent = n + " photos selected. First at full package price; each extra at 50% off.";
+        }
+      }
+      if (listEl) {
+        listEl.innerHTML = "";
+        if (n === 0) {
+          listEl.style.display = "none";
+        } else {
+          listEl.style.display = "block";
+          selectedPhotos.forEach((p) => {
+            const li = document.createElement("li");
+            li.textContent = p.filename || p.id;
+            listEl.appendChild(li);
+          });
+        }
+      }
+      recalc();
+      notifyParentHeight();
+    }
+
+    function applySelectedPhotos(photos) {
+      if (!Array.isArray(photos)) {
+        selectedPhotos = [];
+      } else {
+        const seen = new Set();
+        selectedPhotos = [];
+        photos.forEach((item) => {
+          const id = String((item && item.id) || item || "").trim();
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          selectedPhotos.push({
+            id,
+            filename: String((item && item.filename) || id).trim() || id,
+          });
+        });
+      }
+      updateSelectedPhotosUi();
+    }
+
     function buildOrderPayload(extraPayment) {
       const selected = form.querySelector('input[name="package"]:checked');
       const packageKey = selected ? selected.dataset.key : "";
@@ -834,6 +938,8 @@
       const subject = accessCode
         ? "Band photo order — " + studentName + " — " + accessCode
         : "Band photo order — " + studentName;
+      const unit = selected ? Number(selected.dataset.price) : 0;
+      const count = packageNeedsPrintSelection(packageKey) ? selectedPhotos.length : 0;
 
       return {
         _subject: subject,
@@ -847,7 +953,15 @@
         Package_contents: packageContentsText(packageKey),
         Lab_print_checklist: labPrintChecklist(packageKey),
         Add_ons: addonSummary(),
+        Selected_photos: packageNeedsPrintSelection(packageKey)
+          ? selectedPhotosText()
+          : (packageKey === "digital" ? "N/A — digital unlock (all photos)" : "—"),
+        Photo_count: packageNeedsPrintSelection(packageKey) ? String(selectedPhotos.length) : (packageKey === "digital" ? "0" : "—"),
+        Multi_photo_pricing: packageNeedsPrintSelection(packageKey)
+          ? multiPhotoPricingLabel(unit, count)
+          : "N/A",
         Package_total: "$" + (pkgTotal.value || "0"),
+        Multi_photo_total: multiPhotoTotal && multiPhotoTotal.value ? "$" + multiPhotoTotal.value : "$0",
         Addon_total: "$" + (addonTotal.value || "0"),
         Grand_total: "$" + (grandTotal.value || "0"),
         Parent: form.parent.value,
@@ -861,7 +975,14 @@
 
     function recalc() {
       const selected = form.querySelector('input[name="package"]:checked');
-      const pkg = selected ? Number(selected.dataset.price) : 0;
+      const packageKey = selected ? selected.dataset.key : "";
+      const unit = selected ? Number(selected.dataset.price) : 0;
+      const needsSelection = packageNeedsPrintSelection(packageKey);
+      const count = needsSelection ? selectedPhotos.length : (packageKey ? 1 : 0);
+      const packageAmount = needsSelection
+        ? multiPhotoPackageAmount(unit, count)
+        : unit;
+      const multiExtra = needsSelection && count > 1 ? packageAmount - unit : 0;
       let addons = 0;
 
       form.querySelectorAll(".qty").forEach((input) => {
@@ -872,9 +993,32 @@
         input.closest("tr").querySelector(".line-total").textContent = "$" + money(line);
       });
 
-      pkgTotal.value = pkg ? money(pkg) : "";
+      if (pkgLabel) {
+        if (needsSelection && count > 1) pkgLabel.textContent = "Package (1st photo)";
+        else if (needsSelection && count === 1) pkgLabel.textContent = "Package (1 photo)";
+        else pkgLabel.textContent = "Package";
+      }
+      if (multiPhotoRow) {
+        if (needsSelection && count > 1) {
+          multiPhotoRow.style.display = "";
+          document.getElementById("multi-photo-label").textContent =
+            (count - 1) + " extra photo" + (count - 1 === 1 ? "" : "s") + " (50% off each)";
+          multiPhotoTotal.value = money(multiExtra);
+        } else {
+          multiPhotoRow.style.display = "none";
+          if (multiPhotoTotal) multiPhotoTotal.value = "";
+        }
+      }
+
+      if (needsSelection) {
+        pkgTotal.value = count >= 1 ? money(unit) : "";
+      } else {
+        pkgTotal.value = unit ? money(unit) : "";
+      }
+
       addonTotal.value = addons ? money(addons) : "";
-      grandTotal.value = pkg || addons ? money(pkg + addons) : "";
+      const grand = (needsSelection ? packageAmount : unit) + addons;
+      grandTotal.value = grand ? money(grand) : "";
     }
 
     form.addEventListener("change", () => {
@@ -887,7 +1031,14 @@
       form.querySelectorAll(".line-total").forEach((el) => { el.textContent = "$0"; });
       statusEl.classList.remove("show", "error");
       if (!form.date.value) form.date.valueAsDate = new Date();
-      recalc();
+      // Keep gallery-synced photo selection when clearing contact fields alone —
+      // only clear selection if not embedded, or leave as-is from parent.
+      if (!document.body.classList.contains("embed")) {
+        selectedPhotos = [];
+        updateSelectedPhotosUi();
+      } else {
+        recalc();
+      }
       updatePayUi();
     }
 
@@ -901,6 +1052,21 @@
         ? root + "index.html"
         : window.location.href.split("#")[0].split("?")[0] + "?canceled=1";
 
+      const packageKey = selected.dataset.key;
+      const unit = Number(selected.dataset.price) || 0;
+      const needsSelection = packageNeedsPrintSelection(packageKey);
+      const count = needsSelection ? selectedPhotos.length : 1;
+      const packageAmount = needsSelection
+        ? multiPhotoPackageAmount(unit, count)
+        : unit;
+      let addonCents = 0;
+      form.querySelectorAll(".qty").forEach((input) => {
+        const qty = Number(input.value) || 0;
+        const price = Number(input.dataset.price) || 0;
+        addonCents += Math.round(qty * price * 100);
+      });
+      const expectedTotalCents = Math.round(packageAmount * 100) + addonCents;
+
       const orderSnapshot = buildOrderPayload("Paid online via Stripe (pending confirmation)");
       sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderSnapshot));
 
@@ -908,7 +1074,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
-          packageKey: selected.dataset.key,
+          packageKey,
           student: form.student.value,
           grade: form.grade.value,
           instrument: form.instrument.value,
@@ -919,6 +1085,9 @@
           date: form.date.value,
           accessCode: (form.access_code && form.access_code.value.trim()) || "",
           addons: addonQuantities(),
+          selectedPhotos: needsSelection ? selectedPhotos : [],
+          selectedPhotoCount: needsSelection ? selectedPhotos.length : 0,
+          expectedTotalCents,
           successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
           cancelUrl,
         }),
@@ -948,12 +1117,22 @@
 
       if (!form.reportValidity()) return;
 
+      const selected = form.querySelector('input[name="package"]:checked');
+      if (!selected) {
+        showStatus("Please choose a package.", true);
+        return;
+      }
+      const packageKey = selected.dataset.key;
+      if (packageNeedsPrintSelection(packageKey) && selectedPhotos.length < 1) {
+        showStatus("Select at least one photo to print using the checkboxes under the gallery photos, then try again.", true);
+        return;
+      }
+
       if (!checkoutApiConfigured()) {
         showStatus("Online card payment isn’t set up yet. Ask the photographer to finish Stripe setup (STRIPE-SETUP.md).", true);
         return;
       }
 
-      const selected = form.querySelector('input[name="package"]:checked');
       const submitButtons = document.querySelectorAll('button[type="submit"]');
       submitButtons.forEach((btn) => { btn.disabled = true; });
 
@@ -987,6 +1166,20 @@
       history.replaceState({}, "", window.location.pathname + (params.get("embed") === "1" ? "?embed=1" : ""));
     }
 
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "band-photo-selection") {
+        applySelectedPhotos(data.photos || []);
+        if (data.code && form.access_code && !form.access_code.value) {
+          form.access_code.value = String(data.code).toUpperCase();
+        }
+        if (data.student && form.student && !form.student.value) {
+          form.student.value = String(data.student);
+        }
+      }
+    });
+
     function notifyParentHeight() {
       if (!document.body.classList.contains("embed") || !window.parent || window.parent === window) return;
       const height = Math.ceil(Math.max(
@@ -1007,10 +1200,15 @@
       } else {
         setInterval(notifyParentHeight, 1000);
       }
+      // Ask parent gallery for current photo selection (in case we loaded after they chose).
+      try {
+        window.parent.postMessage({ type: "band-photo-selection-request" }, "*");
+      } catch (_) { /* ignore */ }
     }
 
     recalc();
     updatePayUi();
+    updateSelectedPhotosUi();
     notifyParentHeight();
   </script>
 </body>
