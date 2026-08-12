@@ -235,7 +235,7 @@
     <div id="app" class="hidden">
       <section class="panel no-print">
         <h2>Add student + generate code</h2>
-        <p class="help">Create a code first, then use <strong>Upload photos</strong> on that student row. Export JPEGs from Lightroom (under ~4MB each) and upload them here for the parent gallery.</p>
+        <p class="help">Create a code first, then use <strong>Upload photos</strong> on that student row. Export JPEG/PNG/WebP from Lightroom (under 25MB each; JPEG ~1–4MB is ideal) and upload them here for the parent gallery.</p>
         <form id="create-form">
           <div class="row">
             <div>
@@ -275,7 +275,7 @@
       <section class="panel no-print hidden" id="upload-panel">
         <h2>Upload photos — <span id="upload-student-label"></span></h2>
         <div id="upload-dslr-hint"></div>
-        <p class="help">Select one or more JPEG/PNG/WebP files. Parents will see these on the gallery page with watermarks until digital is paid.</p>
+        <p class="help">Select one or more JPEG/PNG/WebP files (max 25MB each). Files upload directly to storage. Prefer JPEG for faster parent loading; PNG is fine when needed.</p>
         <input id="photo-files" type="file" accept="image/jpeg,image/png,image/webp" multiple />
         <div class="actions">
           <button type="button" id="upload-btn">Upload selected photos</button>
@@ -345,6 +345,9 @@
       el.classList.toggle("ok", Boolean(message) && !isError);
     }
 
+    const MAX_PHOTO_BYTES = 25 * 1024 * 1024;
+    let blobPutPromise = null;
+
     async function api(path, options) {
       const base = apiBase();
       if (!base) throw new Error("Set window.BAND_PHOTO_API_BASE in config.js");
@@ -353,7 +356,14 @@
       if (options && options.body && !headers["Content-Type"]) {
         headers["Content-Type"] = "application/json";
       }
-      const res = await fetch(base + path, Object.assign({}, options, { headers }));
+      let res;
+      try {
+        res = await fetch(base + path, Object.assign({}, options, { headers }));
+      } catch (err) {
+        throw new Error(
+          "Network error talking to the API (often a file that is too large for the old upload path, or a connection blip). Try again, or use a JPEG under 25MB."
+        );
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || ("Request failed (" + res.status + ")"));
       return data;
@@ -364,12 +374,65 @@
       app.classList.toggle("hidden", !unlocked);
     }
 
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("Could not read " + file.name));
-        reader.readAsDataURL(file);
+    function guessContentType(file) {
+      if (file && file.type) return file.type;
+      const name = String((file && file.name) || "").toLowerCase();
+      if (name.endsWith(".png")) return "image/png";
+      if (name.endsWith(".webp")) return "image/webp";
+      if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+      return "image/jpeg";
+    }
+
+    function loadBlobPut() {
+      if (!blobPutPromise) {
+        blobPutPromise = import("https://esm.sh/@vercel/blob@2.6.1/client").then((mod) => {
+          if (!mod || typeof mod.put !== "function") {
+            throw new Error("Could not load the direct upload library.");
+          }
+          return mod.put;
+        });
+      }
+      return blobPutPromise;
+    }
+
+    async function uploadPhotoFile(code, file) {
+      const contentType = guessContentType(file);
+      if (!/^image\/(jpeg|jpg|png|webp)$/i.test(contentType)) {
+        throw new Error(file.name + ": only JPEG, PNG, or WebP are allowed.");
+      }
+      if (file.size > MAX_PHOTO_BYTES) {
+        throw new Error(file.name + " is over 25MB. Export a smaller file from Lightroom.");
+      }
+
+      const prepared = await api("/api/admin/photos?code=" + encodeURIComponent(code), {
+        method: "POST",
+        body: JSON.stringify({
+          action: "prepare",
+          code,
+          filename: file.name,
+          contentType,
+        }),
+      });
+
+      const put = await loadBlobPut();
+      await put(prepared.pathname, file, {
+        access: prepared.access || "private",
+        token: prepared.clientToken,
+        contentType: prepared.contentType || contentType,
+        multipart: file.size > 4 * 1024 * 1024,
+      });
+
+      return api("/api/admin/photos?code=" + encodeURIComponent(code), {
+        method: "POST",
+        body: JSON.stringify({
+          action: "register",
+          code,
+          photoId: prepared.photoId,
+          pathname: prepared.pathname,
+          filename: file.name,
+          contentType: prepared.contentType || contentType,
+          size: file.size,
+        }),
       });
     }
 
@@ -539,16 +602,7 @@
         for (let i = 0; i < files.length; i += 1) {
           const file = files[i];
           setStatus(uploadStatus, "Uploading " + (i + 1) + " of " + files.length + ": " + file.name);
-          const dataUrl = await fileToBase64(file);
-          await api("/api/admin/photos?code=" + encodeURIComponent(uploadCode), {
-            method: "POST",
-            body: JSON.stringify({
-              code: uploadCode,
-              filename: file.name,
-              contentType: file.type || "image/jpeg",
-              data: dataUrl,
-            }),
-          });
+          await uploadPhotoFile(uploadCode, file);
         }
         input.value = "";
         const data = await api("/api/admin/photos?code=" + encodeURIComponent(uploadCode));

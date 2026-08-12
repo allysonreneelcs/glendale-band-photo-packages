@@ -1,7 +1,14 @@
 const { handleOptions, sendJson, parseBody } = require("../../lib/cors");
 const { requireAdmin } = require("../../lib/auth");
 const { formatCode } = require("../../lib/codes");
-const { addStudentPhoto, removeStudentPhoto, readStudent, adminStudent } = require("../../lib/store");
+const {
+  addStudentPhoto,
+  prepareStudentPhotoUpload,
+  registerStudentPhoto,
+  removeStudentPhoto,
+  readStudent,
+  adminStudent,
+} = require("../../lib/store");
 
 module.exports = async function handler(req, res) {
   const { handled, headers } = handleOptions(req, res, "GET, POST, DELETE, OPTIONS");
@@ -47,7 +54,38 @@ module.exports = async function handler(req, res) {
       }
       const body = parsed.body;
       const studentCode = formatCode(code || body.code);
+      const action = String(body.action || "").trim().toLowerCase();
+
+      // Direct-to-Blob upload (preferred): prepare token, then register after client put.
+      if (action === "prepare") {
+        const result = await prepareStudentPhotoUpload(studentCode, {
+          filename: body.filename || "photo.jpg",
+          contentType: body.contentType || "image/jpeg",
+        });
+        sendJson(res, 200, headers, result);
+        return;
+      }
+
+      if (action === "register") {
+        const result = await registerStudentPhoto(studentCode, {
+          photoId: body.photoId,
+          pathname: body.pathname,
+          filename: body.filename || "photo.jpg",
+          contentType: body.contentType || "image/jpeg",
+          size: body.size,
+        });
+        sendJson(res, 200, headers, result);
+        return;
+      }
+
+      // Legacy JSON/base64 body (small files only; Vercel serverless limit ~4.5MB).
       const data = String(body.data || "");
+      if (!data) {
+        sendJson(res, 400, headers, {
+          error: "Missing upload data. Use action prepare/register for photo uploads.",
+        });
+        return;
+      }
       const base64 = data.includes(",") ? data.split(",").pop() : data;
       const buffer = Buffer.from(base64, "base64");
       const result = await addStudentPhoto(studentCode, {
