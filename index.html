@@ -183,6 +183,19 @@
       background:
         repeating-linear-gradient(-18deg, transparent 0 28px, rgba(255,255,255,0.05) 28px 30px);
     }
+    .photo-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .photo-label {
+      margin: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--navy-deep);
+      line-height: 1.25;
+      word-break: break-word;
+    }
     .photo-select {
       display: flex;
       align-items: flex-start;
@@ -206,6 +219,17 @@
       letter-spacing: 0;
       border: none;
       padding: 0;
+    }
+    .lightbox-label {
+      flex: 1 1 100%;
+      min-width: 0;
+      margin: 0;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+      word-break: break-word;
     }
     .selection-bar {
       margin: 0 0 1rem;
@@ -532,6 +556,7 @@
     <div class="lightbox-inner locked" id="lightbox-inner">
       <img id="lightbox-img" alt="Student photo preview" />
       <div class="lightbox-bar">
+        <p class="lightbox-label" id="lightbox-label"></p>
         <label class="photo-select" id="lightbox-select-wrap" style="color:#fff;align-items:center">
           <input type="checkbox" id="lightbox-select" />
           <span>Print this photo</span>
@@ -557,14 +582,31 @@
     const lightboxInner = document.getElementById("lightbox-inner");
     const lightboxImg = document.getElementById("lightbox-img");
     const lightboxSelect = document.getElementById("lightbox-select");
+    const lightboxLabel = document.getElementById("lightbox-label");
     const downloadAllBtn = document.getElementById("download-all");
     const downloadRightsLink = document.getElementById("download-rights");
     const viewRightsLink = document.getElementById("view-rights");
     const lightboxDownload = document.getElementById("lightbox-download");
     let current = null;
     let activePhotoId = null;
-    /** @type {Map<string, {id: string, filename: string}>} */
+    /** @type {Map<string, {id: string, filename: string, index: number, label: string}>} */
     const selectedPhotos = new Map();
+
+    function photoDisplayLabel(photo, index) {
+      const name = (photo && (photo.filename || photo.id)) || "photo";
+      return "Photo " + (index + 1) + " — " + name;
+    }
+
+    function photoMeta(photo, index) {
+      const id = photo && photo.id;
+      const filename = (photo && (photo.filename || photo.id)) || "photo.jpg";
+      return {
+        id,
+        filename,
+        index,
+        label: photoDisplayLabel({ id, filename }, index),
+      };
+    }
 
     function apiBase() {
       return String(window.BAND_PHOTO_API_BASE || "").replace(/\/$/, "");
@@ -594,10 +636,7 @@
 
     function getGalleryPhotoList() {
       if (!current || !Array.isArray(current.photos)) return [];
-      return current.photos.map((p) => ({
-        id: p.id,
-        filename: p.filename || p.id,
-      }));
+      return current.photos.map((p, i) => photoMeta(p, i));
     }
 
     function updateSelectionUi() {
@@ -633,10 +672,14 @@
       pushSelectionToOrderFrame();
     }
 
-    function setPhotoSelected(id, filename, checked) {
+    function setPhotoSelected(id, filename, checked, index) {
       if (!id) return;
-      if (checked) selectedPhotos.set(id, { id, filename: filename || id });
-      else selectedPhotos.delete(id);
+      if (checked) {
+        const idx = typeof index === "number" ? index : 0;
+        selectedPhotos.set(id, photoMeta({ id, filename: filename || id }, idx));
+      } else {
+        selectedPhotos.delete(id);
+      }
       updateSelectionUi();
     }
 
@@ -676,40 +719,56 @@
       for (const id of Array.from(selectedPhotos.keys())) {
         if (!validIds.has(id)) selectedPhotos.delete(id);
       }
-      photos.forEach((p) => {
+      photos.forEach((p, index) => {
+        const meta = photoMeta(p, index);
         const card = document.createElement("div");
         card.className = "photo-card" + (selectedPhotos.has(p.id) ? " is-selected" : "");
         card.setAttribute("data-photo-id", p.id);
+        card.setAttribute("data-photo-index", String(index));
 
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "thumb" + (student.digitalPaid ? "" : " locked");
-        btn.setAttribute("aria-label", "Open photo");
+        btn.setAttribute("aria-label", "Open " + meta.label);
         const img = document.createElement("img");
         img.src = photoUrl(student.code, p.id, false);
-        img.alt = student.studentName + " photo";
+        img.alt = student.studentName + " — " + meta.label;
         img.loading = "lazy";
         btn.appendChild(img);
         btn.addEventListener("click", () => openLightbox(p.id));
 
-        const label = document.createElement("label");
-        label.className = "photo-select";
+        const metaWrap = document.createElement("div");
+        metaWrap.className = "photo-meta";
+        const caption = document.createElement("p");
+        caption.className = "photo-label";
+        caption.textContent = meta.label;
+        caption.title = meta.label;
+
+        const selectLabel = document.createElement("label");
+        selectLabel.className = "photo-select";
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = selectedPhotos.has(p.id);
-        cb.setAttribute("aria-label", "Select this photo for print");
+        cb.setAttribute("aria-label", "Print " + meta.label);
         cb.addEventListener("click", (e) => e.stopPropagation());
         cb.addEventListener("change", () => {
-          setPhotoSelected(p.id, p.filename || "photo.jpg", cb.checked);
+          setPhotoSelected(p.id, meta.filename, cb.checked, index);
         });
         const span = document.createElement("span");
         span.textContent = "Print this photo";
-        label.appendChild(cb);
-        label.appendChild(span);
+        selectLabel.appendChild(cb);
+        selectLabel.appendChild(span);
 
+        metaWrap.appendChild(caption);
+        metaWrap.appendChild(selectLabel);
         card.appendChild(btn);
-        card.appendChild(label);
+        card.appendChild(metaWrap);
         photoGrid.appendChild(card);
+
+        // Keep Map entries in sync with gallery order numbering after re-render.
+        if (selectedPhotos.has(p.id)) {
+          selectedPhotos.set(p.id, meta);
+        }
       });
       updateSelectionUi();
     }
@@ -717,14 +776,19 @@
     function openLightbox(photoId) {
       if (!current) return;
       activePhotoId = photoId;
-      const photo = (current.photos || []).find((p) => p.id === photoId);
+      const photos = current.photos || [];
+      const index = photos.findIndex((p) => p.id === photoId);
+      const photo = index >= 0 ? photos[index] : null;
+      const meta = photoMeta(photo || { id: photoId, filename: "photo.jpg" }, Math.max(0, index));
       lightboxImg.src = photoUrl(current.code, photoId, false);
+      lightboxImg.alt = meta.label;
+      if (lightboxLabel) lightboxLabel.textContent = meta.label;
       lightboxInner.classList.toggle("locked", !current.digitalPaid);
       lightboxDownload.classList.toggle("hidden", !current.digitalPaid);
       if (lightboxSelect) {
         lightboxSelect.checked = selectedPhotos.has(photoId);
         lightboxSelect.onchange = () => {
-          setPhotoSelected(photoId, (photo && photo.filename) || "photo.jpg", lightboxSelect.checked);
+          setPhotoSelected(photoId, meta.filename, lightboxSelect.checked, meta.index);
         };
       }
       lightbox.classList.remove("hidden");
@@ -733,6 +797,7 @@
     function closeLightbox() {
       lightbox.classList.add("hidden");
       lightboxImg.src = "";
+      if (lightboxLabel) lightboxLabel.textContent = "";
       activePhotoId = null;
     }
 

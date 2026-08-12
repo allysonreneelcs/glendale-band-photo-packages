@@ -42,7 +42,7 @@ function truncate(str, max) {
   return String(str || "").trim().slice(0, max);
 }
 
-/** Normalize selectedPhotos from client into { id, filename }[], max 40. */
+/** Normalize selectedPhotos from client into { id, filename, index?, label? }[], max 40. */
 function normalizeSelectedPhotos(raw) {
   if (!Array.isArray(raw)) return [];
   const seen = new Set();
@@ -51,16 +51,26 @@ function normalizeSelectedPhotos(raw) {
     if (out.length >= 40) break;
     let id = "";
     let filename = "";
+    let index;
+    let label = "";
     if (typeof item === "string") {
       id = truncate(item, 80);
       filename = id;
     } else if (item && typeof item === "object") {
       id = truncate(item.id || item.photoId || "", 80);
       filename = truncate(item.filename || item.name || id, 120);
+      if (typeof item.index === "number" && item.index >= 0) index = Math.floor(item.index);
+      label = truncate(item.label || "", 160);
     }
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    out.push({ id, filename: filename || id });
+    const n = typeof index === "number" ? index : out.length;
+    out.push({
+      id,
+      filename: filename || id,
+      index: typeof index === "number" ? index : undefined,
+      label: label || `Photo ${n + 1} — ${filename || id}`,
+    });
   }
   return out;
 }
@@ -246,7 +256,7 @@ module.exports = async function handler(req, res) {
       if (qty > 0) {
         const photoBits = addonNormalized.assignments
           .filter((a) => a.key === key)
-          .map((a) => `${a.filename}×${a.qty}`);
+          .map((a) => `${a.label || a.filename}×${a.qty}`);
         const desc = photoBits.length ? photoBits.join(", ").slice(0, 450) : undefined;
         lineItems.push({
           price_data: {
@@ -290,7 +300,7 @@ module.exports = async function handler(req, res) {
     : labChecklistBase;
 
   const selectedPhotosText = selectedPhotos
-    .map((p, i) => `${i + 1}. ${p.filename}${p.id && p.id !== p.filename ? ` [${p.id}]` : ""}`)
+    .map((p, i) => p.label || `Photo ${(typeof p.index === "number" ? p.index : i) + 1} — ${p.filename}`)
     .join("; ");
   const selectedPhotoIds = selectedPhotos.map((p) => p.id).join(",");
 
@@ -325,7 +335,7 @@ module.exports = async function handler(req, res) {
         accessCode: accessCode || "",
         // Aggregate names × qty = line total (e.g. Extra 8×10 ×2 = $24)
         addons: addonPurchase.summary.slice(0, 450),
-        // Per-photo: Photo "a.jpg": Extra 8×10 ×2 ($24); …
+        // Per-photo: Photo 1 — a.jpg: Extra 8×10 ×2 ($24); …
         addonsByPhoto: addonsByPhoto.summary.slice(0, 500),
         addonTotal: addonPurchase.totalLabel,
         selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),

@@ -182,19 +182,28 @@
           ? order.Photo_preview_links
           : "—";
       }
-      const nameById = {};
-      String(order.Selected_photos || "").split(/;\s*/).forEach((part) => {
-        const m = String(part).trim().match(/^\d+\.\s*(.+?)(?:\s*\[([^\]]+)\])?\s*$/);
-        if (!m) return;
-        const filename = m[1].trim();
-        const id = (m[2] || filename).trim();
-        if (id) nameById[id] = filename;
-      });
+      const labels = String(order.Selected_photos || "")
+        .split(/;\s*/)
+        .map((part) => String(part).trim())
+        .filter((part) => part && part !== "—" && !/^N\/A/i.test(part));
       return ids
         .map((id, i) => {
-          const label = nameById[id] || id;
+          let label = labels[i] || "";
+          if (!label) {
+            // Legacy: "1. filename [id]"
+            const legacy = labels.find((part) => {
+              const m = part.match(/^\d+\.\s*(.+?)(?:\s*\[([^\]]+)\])?\s*$/);
+              return m && ((m[2] || "").trim() === id || m[1].trim() === id);
+            });
+            if (legacy) {
+              const m = legacy.match(/^\d+\.\s*(.+?)(?:\s*\[([^\]]+)\])?\s*$/);
+              label = m ? m[1].trim() : legacy;
+            } else {
+              label = "Photo " + (i + 1) + " — " + id;
+            }
+          }
           const url = apiBase + "/api/photo?code=" + encodeURIComponent(code) + "&id=" + encodeURIComponent(id);
-          return (i + 1) + ". " + label + " — " + url;
+          return label + " — " + url;
         })
         .join(" | ");
     }

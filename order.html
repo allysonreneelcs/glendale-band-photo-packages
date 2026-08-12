@@ -803,10 +803,10 @@
     const pkgLabel = document.getElementById("pkg-label");
     const statusEl = document.getElementById("status");
     const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
-    /** @type {{id: string, filename: string}[]} */
+    /** @type {{id: string, filename: string, index?: number, label?: string}[]} */
     let selectedPhotos = [];
     /** All photos in the student gallery (for add-on assignment). */
-    /** @type {{id: string, filename: string, label?: string}[]} */
+    /** @type {{id: string, filename: string, index?: number, label?: string}[]} */
     let galleryPhotos = [];
     /** Preserved add-on qtys by addonKey → photoId → qty while re-rendering. */
     /** @type {Record<string, Record<string, number>>} */
@@ -919,8 +919,29 @@
     }
 
     function photoDisplayLabel(photo, index) {
+      if (photo && photo.label) return String(photo.label);
       const name = (photo && (photo.filename || photo.id)) || "photo";
-      return "Photo " + (index + 1) + " — " + name;
+      const n = typeof index === "number"
+        ? index
+        : (typeof photo.index === "number" ? photo.index : 0);
+      return "Photo " + (n + 1) + " — " + name;
+    }
+
+    function galleryIndexForId(id) {
+      return galleryPhotos.findIndex((p) => p.id === id);
+    }
+
+    function labelForPhoto(photoOrId, filename) {
+      if (photoOrId && typeof photoOrId === "object") {
+        const idx = typeof photoOrId.index === "number"
+          ? photoOrId.index
+          : galleryIndexForId(photoOrId.id);
+        return photoDisplayLabel(photoOrId, idx >= 0 ? idx : 0);
+      }
+      const id = String(photoOrId || "");
+      const idx = galleryIndexForId(id);
+      if (idx >= 0) return photoDisplayLabel(galleryPhotos[idx], idx);
+      return photoDisplayLabel({ id, filename: filename || id }, 0);
     }
 
     function captureAddonQtyState() {
@@ -1055,8 +1076,19 @@
             const id = input.getAttribute("data-photo-id") || "";
             const filename = input.getAttribute("data-filename") || id;
             if (!id) return;
-            assignments.push({ key, id, filename, qty, name: label, unitDollars: price });
-            byPhoto[key].push({ id, filename, qty });
+            const photoLabel = labelForPhoto(id, filename);
+            const gIndex = galleryIndexForId(id);
+            assignments.push({
+              key,
+              id,
+              filename,
+              qty,
+              name: label,
+              unitDollars: price,
+              label: photoLabel,
+              index: gIndex >= 0 ? gIndex : undefined,
+            });
+            byPhoto[key].push({ id, filename, qty, label: photoLabel, index: gIndex >= 0 ? gIndex : undefined });
             totals[key] += qty;
           });
         } else {
@@ -1108,7 +1140,7 @@
       const map = new Map();
       (data.assignments || []).forEach((a) => {
         if (!a.qty) return;
-        const label = a.filename || a.id || "Photo";
+        const label = a.label || labelForPhoto(a.id, a.filename);
         if (!map.has(label)) map.set(label, []);
         const line = (a.name || a.key) + " ×" + a.qty + " ($" + money(a.qty * (a.unitDollars || 0)) + ")";
         map.get(label).push(line);
@@ -1116,7 +1148,7 @@
       if (!map.size) return "None";
       const lines = [];
       map.forEach((parts, label) => {
-        lines.push('Photo "' + label + '": ' + parts.join("; "));
+        lines.push(label + ": " + parts.join("; "));
       });
       return lines.join(" · ");
     }
@@ -1146,7 +1178,7 @@
     function selectedPhotosText() {
       if (!selectedPhotos.length) return "—";
       return selectedPhotos
-        .map((p, i) => (i + 1) + ". " + (p.filename || p.id) + (p.id && p.id !== p.filename ? " [" + p.id + "]" : ""))
+        .map((p) => labelForPhoto(p))
         .join("; ");
     }
 
@@ -1160,10 +1192,10 @@
       const code = String(accessCode || "").trim().toUpperCase();
       if (!apiBase || !code || !selectedPhotos.length) return "—";
       return selectedPhotos
-        .map((p, i) => {
-          const label = p.filename || p.id;
+        .map((p) => {
+          const label = labelForPhoto(p);
           const url = apiBase + "/api/photo?code=" + encodeURIComponent(code) + "&id=" + encodeURIComponent(p.id);
-          return (i + 1) + ". " + label + " — " + url;
+          return label + " — " + url;
         })
         .join(" | ");
     }
@@ -1220,7 +1252,7 @@
           listEl.style.display = "block";
           selectedPhotos.forEach((p) => {
             const li = document.createElement("li");
-            li.textContent = p.filename || p.id;
+            li.textContent = labelForPhoto(p);
             listEl.appendChild(li);
           });
         }
@@ -1235,14 +1267,15 @@
       } else {
         const seen = new Set();
         selectedPhotos = [];
-        photos.forEach((item) => {
+        photos.forEach((item, fallbackIndex) => {
           const id = String((item && item.id) || item || "").trim();
           if (!id || seen.has(id)) return;
           seen.add(id);
-          selectedPhotos.push({
-            id,
-            filename: String((item && item.filename) || id).trim() || id,
-          });
+          const filename = String((item && item.filename) || id).trim() || id;
+          const index = typeof item.index === "number" ? item.index : fallbackIndex;
+          const label = String((item && item.label) || "").trim()
+            || photoDisplayLabel({ id, filename }, index);
+          selectedPhotos.push({ id, filename, index, label });
         });
       }
       updateSelectedPhotosUi();
@@ -1254,16 +1287,30 @@
       } else {
         const seen = new Set();
         galleryPhotos = [];
-        photos.forEach((item, index) => {
+        photos.forEach((item, fallbackIndex) => {
           const id = String((item && item.id) || item || "").trim();
           if (!id || seen.has(id)) return;
           seen.add(id);
-          galleryPhotos.push({
-            id,
-            filename: String((item && item.filename) || id).trim() || id,
-            label: "Photo " + (galleryPhotos.length + 1),
-          });
+          const filename = String((item && item.filename) || id).trim() || id;
+          const index = typeof item.index === "number" ? item.index : fallbackIndex;
+          const label = String((item && item.label) || "").trim()
+            || photoDisplayLabel({ id, filename }, index);
+          galleryPhotos.push({ id, filename, index, label });
         });
+      }
+      // Re-resolve selected photo labels against gallery order.
+      if (selectedPhotos.length) {
+        selectedPhotos = selectedPhotos.map((p) => {
+          const idx = galleryIndexForId(p.id);
+          if (idx < 0) return p;
+          return {
+            id: p.id,
+            filename: galleryPhotos[idx].filename || p.filename,
+            index: idx,
+            label: galleryPhotos[idx].label,
+          };
+        });
+        updateSelectedPhotosUi();
       }
       renderAddonPhotoPickers();
     }
@@ -1482,6 +1529,8 @@
             id: a.id,
             filename: a.filename,
             qty: a.qty,
+            label: a.label || labelForPhoto(a.id, a.filename),
+            index: typeof a.index === "number" ? a.index : undefined,
           }));
       }
 

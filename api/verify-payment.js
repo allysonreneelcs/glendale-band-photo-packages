@@ -71,6 +71,11 @@ module.exports = async function handler(req, res) {
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean);
+    const selectedLabels = String(meta.selectedPhotos || "")
+      .split(/;\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter((s) => s !== "—" && !/^N\/A/i.test(s));
     const apiBase = process.env.VERCEL_URL
       ? `https://${String(process.env.VERCEL_URL).replace(/^https?:\/\//, "")}`
       : "https://glendale-band-photo-packages.vercel.app";
@@ -78,7 +83,8 @@ module.exports = async function handler(req, res) {
       ? photoIds
           .map((id, i) => {
             const url = `${apiBase}/api/photo?code=${encodeURIComponent(accessCode)}&id=${encodeURIComponent(id)}`;
-            return `${i + 1}. ${id} — ${url}`;
+            const label = selectedLabels[i] || `Photo ${i + 1} — ${id}`;
+            return `${label} — ${url}`;
           })
           .join(" | ")
       : "—";
