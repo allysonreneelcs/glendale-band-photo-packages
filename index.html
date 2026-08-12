@@ -592,6 +592,14 @@
       return Array.from(selectedPhotos.values());
     }
 
+    function getGalleryPhotoList() {
+      if (!current || !Array.isArray(current.photos)) return [];
+      return current.photos.map((p) => ({
+        id: p.id,
+        filename: p.filename || p.id,
+      }));
+    }
+
     function updateSelectionUi() {
       const list = getSelectedPhotoList();
       const n = list.length;
@@ -640,6 +648,7 @@
         code: current ? current.code : "",
         student: current ? (current.studentName || "") : "",
         photos: getSelectedPhotoList(),
+        galleryPhotos: getGalleryPhotoList(),
       };
       try {
         frame.contentWindow.postMessage(payload, "*");

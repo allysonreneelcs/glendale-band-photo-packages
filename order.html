@@ -249,6 +249,59 @@
     .addons td.center,
     .addons th.center { text-align: center; }
 
+    .addon-photo-rows {
+      margin: 0.2rem 0 0.15rem;
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .addon-photo-row {
+      display: grid;
+      grid-template-columns: 1fr 3.2rem;
+      gap: 0.35rem;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .addon-photo-row label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0;
+      cursor: pointer;
+      min-width: 0;
+    }
+
+    .addon-photo-row .photo-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .addon-photo-row input[type="checkbox"] {
+      accent-color: var(--check);
+      width: 0.95rem;
+      height: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .addon-photo-row .qty {
+      width: 2.6rem;
+    }
+
+    .addon-photo-row .qty:disabled {
+      opacity: 0.45;
+      background: #f0f0f0;
+    }
+
+    .addon-hint {
+      margin: 0 0 0.45rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
     .qty {
       width: 2.4rem;
       text-align: center;
@@ -606,45 +659,71 @@
     </section>
 
     <section>
-      <h2>Add-ons <span style="font-family:'Source Sans 3',sans-serif;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(optional — enter quantity)</span></h2>
-      <table class="addons">
+      <h2>Add-ons <span style="font-family:'Source Sans 3',sans-serif;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)">(optional)</span></h2>
+      <p class="addon-hint" id="addon-hint">For each size, check the gallery photo(s) to print and enter quantity <em>for that photo</em>. Line total = price × qty × selected photos (when qtys match) or the sum of each photo’s qty.</p>
+      <table class="addons" id="addons-table">
         <thead>
           <tr>
             <th>Item</th>
             <th class="num">Each</th>
-            <th class="center">Qty</th>
+            <th>Photos &amp; qty</th>
             <th class="num">Line</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
+        <tbody id="addons-tbody">
+          <tr data-addon="addon_810" data-price="12" data-label="Extra 8×10" data-max="20">
             <td>Extra 8×10</td>
             <td class="num">$12</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="12" data-label="Extra 8×10" name="addon_810" /></td>
+            <td class="addon-controls">
+              <div class="addon-photo-rows" data-role="photo-rows"></div>
+              <div class="addon-legacy" data-role="legacy" hidden>
+                <input class="qty addon-legacy-qty" type="number" min="0" max="20" value="" name="addon_810" aria-label="Extra 8×10 quantity" />
+              </div>
+            </td>
             <td class="num line-total">$0</td>
           </tr>
-          <tr>
+          <tr data-addon="addon_57" data-price="6" data-label="Extra 5×7" data-max="20">
             <td>Extra 5×7</td>
             <td class="num">$6</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 5×7" name="addon_57" /></td>
+            <td class="addon-controls">
+              <div class="addon-photo-rows" data-role="photo-rows"></div>
+              <div class="addon-legacy" data-role="legacy" hidden>
+                <input class="qty addon-legacy-qty" type="number" min="0" max="20" value="" name="addon_57" aria-label="Extra 5×7 quantity" />
+              </div>
+            </td>
             <td class="num line-total">$0</td>
           </tr>
-          <tr>
+          <tr data-addon="addon_46" data-price="3" data-label="Extra 4×6" data-max="40">
             <td>Extra 4×6</td>
             <td class="num">$3</td>
-            <td class="center"><input class="qty" type="number" min="0" max="40" value="" data-price="3" data-label="Extra 4×6" name="addon_46" /></td>
+            <td class="addon-controls">
+              <div class="addon-photo-rows" data-role="photo-rows"></div>
+              <div class="addon-legacy" data-role="legacy" hidden>
+                <input class="qty addon-legacy-qty" type="number" min="0" max="40" value="" name="addon_46" aria-label="Extra 4×6 quantity" />
+              </div>
+            </td>
             <td class="num line-total">$0</td>
           </tr>
-          <tr>
+          <tr data-addon="addon_wallets" data-price="6" data-label="Extra sheet of 8 wallets" data-max="20">
             <td>Extra sheet of 8 wallets</td>
             <td class="num">$6</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra sheet of 8 wallets" name="addon_wallets" /></td>
+            <td class="addon-controls">
+              <div class="addon-photo-rows" data-role="photo-rows"></div>
+              <div class="addon-legacy" data-role="legacy" hidden>
+                <input class="qty addon-legacy-qty" type="number" min="0" max="20" value="" name="addon_wallets" aria-label="Extra wallets quantity" />
+              </div>
+            </td>
             <td class="num line-total">$0</td>
           </tr>
-          <tr>
+          <tr data-addon="addon_1620" data-price="45" data-label="Extra 16×20" data-max="10">
             <td>Extra 16×20</td>
             <td class="num">$45</td>
-            <td class="center"><input class="qty" type="number" min="0" max="10" value="" data-price="45" data-label="Extra 16×20" name="addon_1620" /></td>
+            <td class="addon-controls">
+              <div class="addon-photo-rows" data-role="photo-rows"></div>
+              <div class="addon-legacy" data-role="legacy" hidden>
+                <input class="qty addon-legacy-qty" type="number" min="0" max="10" value="" name="addon_1620" aria-label="Extra 16×20 quantity" />
+              </div>
+            </td>
             <td class="num line-total">$0</td>
           </tr>
         </tbody>
@@ -726,6 +805,12 @@
     const ORDER_STORAGE_KEY = "bandPhotoPendingOrder";
     /** @type {{id: string, filename: string}[]} */
     let selectedPhotos = [];
+    /** All photos in the student gallery (for add-on assignment). */
+    /** @type {{id: string, filename: string, label?: string}[]} */
+    let galleryPhotos = [];
+    /** Preserved add-on qtys by addonKey → photoId → qty while re-rendering. */
+    /** @type {Record<string, Record<string, number>>} */
+    let addonQtyState = {};
 
     const PRINT_PACKAGE_KEYS = new Set(["keepsake", "showcase", "allstar"]);
 
@@ -833,6 +918,209 @@
       return (PACKAGE_CONTENTS[key] || []).join("; ") || "—";
     }
 
+    function photoDisplayLabel(photo, index) {
+      const name = (photo && (photo.filename || photo.id)) || "photo";
+      return "Photo " + (index + 1) + " — " + name;
+    }
+
+    function captureAddonQtyState() {
+      const next = {};
+      document.querySelectorAll("#addons-tbody tr[data-addon]").forEach((tr) => {
+        const key = tr.getAttribute("data-addon");
+        next[key] = {};
+        tr.querySelectorAll(".addon-photo-qty").forEach((input) => {
+          const id = input.getAttribute("data-photo-id");
+          const qty = Number(input.value) || 0;
+          if (id && qty > 0) next[key][id] = qty;
+        });
+        const legacy = tr.querySelector(".addon-legacy-qty");
+        if (legacy) {
+          const qty = Number(legacy.value) || 0;
+          if (qty > 0) next[key].__legacy = qty;
+        }
+      });
+      addonQtyState = next;
+    }
+
+    function renderAddonPhotoPickers() {
+      captureAddonQtyState();
+      const hasGallery = galleryPhotos.length > 0;
+      const hint = document.getElementById("addon-hint");
+      if (hint) {
+        hint.textContent = hasGallery
+          ? "For each size, check the gallery photo(s) to print and enter quantity for that photo. Example: Extra 8×10 ×2 on Photo 1 and ×1 on Photo 2."
+          : "Open this form from the student gallery to assign add-ons to specific photos. Until then, enter a quantity only (photos not linked).";
+      }
+
+      document.querySelectorAll("#addons-tbody tr[data-addon]").forEach((tr) => {
+        const key = tr.getAttribute("data-addon");
+        const max = Number(tr.getAttribute("data-max")) || 20;
+        const label = tr.getAttribute("data-label") || key;
+        const rowsEl = tr.querySelector('[data-role="photo-rows"]');
+        const legacyEl = tr.querySelector('[data-role="legacy"]');
+        const saved = addonQtyState[key] || {};
+
+        if (!rowsEl || !legacyEl) return;
+
+        if (!hasGallery) {
+          rowsEl.innerHTML = "";
+          legacyEl.hidden = false;
+          const legacyInput = legacyEl.querySelector(".addon-legacy-qty");
+          if (legacyInput && saved.__legacy != null) {
+            legacyInput.value = saved.__legacy || "";
+          }
+          return;
+        }
+
+        legacyEl.hidden = true;
+        const legacyInput = legacyEl.querySelector(".addon-legacy-qty");
+        if (legacyInput) legacyInput.value = "";
+
+        rowsEl.innerHTML = "";
+        galleryPhotos.forEach((photo, index) => {
+          const row = document.createElement("div");
+          row.className = "addon-photo-row";
+          const savedQty = saved[photo.id] || 0;
+          const checked = savedQty > 0;
+          const idBase = key + "_" + photo.id;
+
+          const lab = document.createElement("label");
+          lab.setAttribute("for", idBase + "_cb");
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.id = idBase + "_cb";
+          cb.className = "addon-photo-cb";
+          cb.checked = checked;
+          cb.setAttribute("data-photo-id", photo.id);
+          const span = document.createElement("span");
+          span.className = "photo-name";
+          span.textContent = photoDisplayLabel(photo, index);
+          span.title = photo.filename || photo.id;
+          lab.appendChild(cb);
+          lab.appendChild(span);
+
+          const qty = document.createElement("input");
+          qty.type = "number";
+          qty.className = "qty addon-photo-qty";
+          qty.min = "0";
+          qty.max = String(max);
+          qty.value = checked ? String(savedQty) : "";
+          qty.disabled = !checked;
+          qty.setAttribute("data-photo-id", photo.id);
+          qty.setAttribute("data-filename", photo.filename || photo.id);
+          qty.setAttribute("aria-label", label + " qty for " + (photo.filename || photo.id));
+
+          cb.addEventListener("change", () => {
+            qty.disabled = !cb.checked;
+            if (!cb.checked) {
+              qty.value = "";
+            } else if (!qty.value || Number(qty.value) < 1) {
+              qty.value = "1";
+            }
+            recalc();
+            notifyParentHeight();
+          });
+
+          row.appendChild(lab);
+          row.appendChild(qty);
+          rowsEl.appendChild(row);
+        });
+      });
+      recalc();
+      notifyParentHeight();
+    }
+
+    function collectAddonAssignments() {
+      const assignments = [];
+      const byPhoto = {};
+      const totals = {};
+
+      document.querySelectorAll("#addons-tbody tr[data-addon]").forEach((tr) => {
+        const key = tr.getAttribute("data-addon");
+        const price = Number(tr.getAttribute("data-price")) || 0;
+        const label = tr.getAttribute("data-label") || key;
+        const max = Number(tr.getAttribute("data-max")) || 20;
+        totals[key] = 0;
+        byPhoto[key] = [];
+
+        const photoQtys = tr.querySelectorAll(".addon-photo-qty");
+        if (photoQtys.length && galleryPhotos.length) {
+          photoQtys.forEach((input) => {
+            const cb = input.closest(".addon-photo-row") &&
+              input.closest(".addon-photo-row").querySelector(".addon-photo-cb");
+            if (cb && !cb.checked) return;
+            let qty = Math.floor(Number(input.value) || 0);
+            if (qty < 1) return;
+            qty = Math.min(qty, max);
+            const id = input.getAttribute("data-photo-id") || "";
+            const filename = input.getAttribute("data-filename") || id;
+            if (!id) return;
+            assignments.push({ key, id, filename, qty, name: label, unitDollars: price });
+            byPhoto[key].push({ id, filename, qty });
+            totals[key] += qty;
+          });
+        } else {
+          const legacy = tr.querySelector(".addon-legacy-qty");
+          let qty = Math.floor(Number(legacy && legacy.value) || 0);
+          if (qty > 0) {
+            qty = Math.min(qty, max);
+            assignments.push({
+              key,
+              id: "unassigned",
+              filename: "Unassigned",
+              qty,
+              name: label,
+              unitDollars: price,
+            });
+            totals[key] = qty;
+          }
+        }
+      });
+
+      return { assignments, byPhoto, totals };
+    }
+
+    function addonSummaryFromAssignments(data) {
+      const parts = [];
+      let addonDollars = 0;
+      const byKey = {};
+      (data.assignments || []).forEach((a) => {
+        byKey[a.key] = (byKey[a.key] || 0) + a.qty;
+        addonDollars += a.qty * (a.unitDollars || 0);
+      });
+      document.querySelectorAll("#addons-tbody tr[data-addon]").forEach((tr) => {
+        const key = tr.getAttribute("data-addon");
+        const label = tr.getAttribute("data-label") || key;
+        const price = Number(tr.getAttribute("data-price")) || 0;
+        const qty = byKey[key] || 0;
+        if (qty < 1) return;
+        const line = qty * price;
+        parts.push(label + " ×" + qty + " = $" + money(line));
+      });
+      return {
+        summary: parts.length ? parts.join("; ") : "None",
+        totalLabel: "$" + money(addonDollars),
+        dollars: addonDollars,
+      };
+    }
+
+    function addonsByPhotoSummary(data) {
+      const map = new Map();
+      (data.assignments || []).forEach((a) => {
+        if (!a.qty) return;
+        const label = a.filename || a.id || "Photo";
+        if (!map.has(label)) map.set(label, []);
+        const line = (a.name || a.key) + " ×" + a.qty + " ($" + money(a.qty * (a.unitDollars || 0)) + ")";
+        map.get(label).push(line);
+      });
+      if (!map.size) return "None";
+      const lines = [];
+      map.forEach((parts, label) => {
+        lines.push('Photo "' + label + '": ' + parts.join("; "));
+      });
+      return lines.join(" · ");
+    }
+
     function labPrintChecklist(key) {
       const totals = {};
       const sets = packageNeedsPrintSelection(key) ? Math.max(1, selectedPhotos.length) : 1;
@@ -841,12 +1129,18 @@
         totals[size] = (totals[size] || 0) + qty;
       }
       (PACKAGE_PRINTS[key] || []).forEach((row) => add(row.size, row.qty * sets));
-      form.querySelectorAll(".qty").forEach((input) => {
-        const qty = Number(input.value) || 0;
-        if (qty > 0) add(ADDON_SIZES[input.name] || input.dataset.label, qty);
+      const data = collectAddonAssignments();
+      Object.keys(ADDON_SIZES).forEach((addonKey) => {
+        const qty = data.totals[addonKey] || 0;
+        if (qty > 0) add(ADDON_SIZES[addonKey], qty);
       });
       const lines = Object.entries(totals).map(([size, qty]) => qty + " × " + size);
-      return lines.length ? lines.join("; ") : "None (digital only)";
+      const byPhoto = addonsByPhotoSummary(data);
+      const base = lines.length ? lines.join("; ") : "None (digital only)";
+      if (byPhoto && byPhoto !== "None") {
+        return base + " · Add-ons by photo: " + byPhoto.replace(/ \(\$[^)]+\)/g, "");
+      }
+      return base;
     }
 
     function selectedPhotosText() {
@@ -895,31 +1189,6 @@
         return "Your selected photos will be printed and then brought to the school for delivery. Digital downloads unlock ALL gallery photos online (not only the print-selected ones).";
       }
       return "If your package includes prints, they will be printed and then brought to the school for delivery.";
-    }
-
-    function addonSummary() {
-      const parts = [];
-      let addonDollars = 0;
-      form.querySelectorAll(".qty").forEach((input) => {
-        const qty = Number(input.value) || 0;
-        if (qty < 1) return;
-        const price = Number(input.dataset.price) || 0;
-        const line = qty * price;
-        addonDollars += line;
-        parts.push(input.dataset.label + " ×" + qty + " = $" + money(line));
-      });
-      return {
-        summary: parts.length ? parts.join("; ") : "None",
-        totalLabel: "$" + money(addonDollars),
-      };
-    }
-
-    function addonQuantities() {
-      const addons = {};
-      form.querySelectorAll(".qty").forEach((input) => {
-        addons[input.name] = Number(input.value) || 0;
-      });
-      return addons;
     }
 
     function paymentMethods() {
@@ -979,6 +1248,26 @@
       updateSelectedPhotosUi();
     }
 
+    function applyGalleryPhotos(photos) {
+      if (!Array.isArray(photos)) {
+        galleryPhotos = [];
+      } else {
+        const seen = new Set();
+        galleryPhotos = [];
+        photos.forEach((item, index) => {
+          const id = String((item && item.id) || item || "").trim();
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          galleryPhotos.push({
+            id,
+            filename: String((item && item.filename) || id).trim() || id,
+            label: "Photo " + (galleryPhotos.length + 1),
+          });
+        });
+      }
+      renderAddonPhotoPickers();
+    }
+
     function buildOrderPayload(extraPayment) {
       const selected = form.querySelector('input[name="package"]:checked');
       const packageKey = selected ? selected.dataset.key : "";
@@ -995,7 +1284,9 @@
       const packageAmount = needsPrint
         ? multiPhotoPackageAmount(unit, count)
         : unit;
-      const addons = addonSummary();
+      const addonData = collectAddonAssignments();
+      const addons = addonSummaryFromAssignments(addonData);
+      const byPhoto = addonsByPhotoSummary(addonData);
       const selectedForPrints = needsPrint
         ? selectedPhotosText()
         : (packageKey === "digital" ? "N/A — digital unlock (all photos)" : "—");
@@ -1017,6 +1308,7 @@
         Multi_photo_pricing: multiPricing,
         Package_amount_charged: packageAmountLabel,
         Add_ons_purchased: addons.summary,
+        Add_ons_by_photo: byPhoto,
         Add_on_total: addons.totalLabel,
         Selected_photos_for_prints: selectedForPrints,
         Selected_photo_ids: needsPrint ? selectedPhotoIdsText() : "",
@@ -1055,14 +1347,17 @@
         ? multiPhotoPackageAmount(unit, count)
         : unit;
       const multiExtra = needsSelection && count > 1 ? packageAmount - unit : 0;
+      const addonData = collectAddonAssignments();
       let addons = 0;
 
-      form.querySelectorAll(".qty").forEach((input) => {
-        const qty = Number(input.value) || 0;
-        const price = Number(input.dataset.price) || 0;
+      document.querySelectorAll("#addons-tbody tr[data-addon]").forEach((tr) => {
+        const key = tr.getAttribute("data-addon");
+        const price = Number(tr.getAttribute("data-price")) || 0;
+        const qty = (addonData.totals[key] || 0);
         const line = qty * price;
         addons += line;
-        input.closest("tr").querySelector(".line-total").textContent = "$" + money(line);
+        const lineEl = tr.querySelector(".line-total");
+        if (lineEl) lineEl.textContent = "$" + money(line);
       });
 
       if (pkgLabel) {
@@ -1103,15 +1398,26 @@
       form.querySelectorAll(".line-total").forEach((el) => { el.textContent = "$0"; });
       statusEl.classList.remove("show", "error");
       if (!form.date.value) form.date.valueAsDate = new Date();
-      // Keep gallery-synced photo selection when clearing contact fields alone —
-      // only clear selection if not embedded, or leave as-is from parent.
+      addonQtyState = {};
       if (!document.body.classList.contains("embed")) {
         selectedPhotos = [];
+        galleryPhotos = [];
         updateSelectedPhotosUi();
+        renderAddonPhotoPickers();
       } else {
+        renderAddonPhotoPickers();
         recalc();
       }
       updatePayUi();
+    }
+
+    function validateAddonPhotoAssignments() {
+      if (!galleryPhotos.length) return true;
+      const data = collectAddonAssignments();
+      const hasQty = data.assignments.some((a) => a.qty > 0);
+      if (!hasQty) return true;
+      const bad = data.assignments.some((a) => !a.id || a.id === "unassigned");
+      return !bad;
     }
 
     async function startStripeCheckout(selected) {
@@ -1131,38 +1437,58 @@
       const packageAmount = needsSelection
         ? multiPhotoPackageAmount(unit, count)
         : unit;
+      const addonData = collectAddonAssignments();
       let addonCents = 0;
-      form.querySelectorAll(".qty").forEach((input) => {
-        const qty = Number(input.value) || 0;
-        const price = Number(input.dataset.price) || 0;
-        addonCents += Math.round(qty * price * 100);
+      addonData.assignments.forEach((a) => {
+        addonCents += Math.round(a.qty * (a.unitDollars || 0) * 100);
       });
       const expectedTotalCents = Math.round(packageAmount * 100) + addonCents;
 
       const orderSnapshot = buildOrderPayload("Paid online via Stripe (pending confirmation)");
       sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderSnapshot));
 
+      const hasGalleryAddons = galleryPhotos.length > 0;
+      const checkoutBody = {
+        packageKey,
+        student: form.student.value,
+        grade: form.grade.value,
+        instrument: form.instrument.value,
+        parent: form.parent.value,
+        phone: form.phone.value,
+        email: form.email.value,
+        signature: form.signature.value,
+        date: form.date.value,
+        accessCode: (form.access_code && form.access_code.value.trim()) || "",
+        addons: addonData.totals,
+        selectedPhotos: needsSelection ? selectedPhotos : [],
+        selectedPhotoCount: needsSelection ? selectedPhotos.length : 0,
+        expectedTotalCents,
+        successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
+        cancelUrl,
+      };
+      if (hasGalleryAddons) {
+        // Only send by-photo fields when gallery photos drive the UI.
+        const byPhoto = {};
+        Object.keys(addonData.byPhoto).forEach((key) => {
+          if (addonData.byPhoto[key] && addonData.byPhoto[key].length) {
+            byPhoto[key] = addonData.byPhoto[key];
+          }
+        });
+        checkoutBody.addonsByPhoto = byPhoto;
+        checkoutBody.addonAssignments = addonData.assignments
+          .filter((a) => a.id && a.id !== "unassigned")
+          .map((a) => ({
+            key: a.key,
+            id: a.id,
+            filename: a.filename,
+            qty: a.qty,
+          }));
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          packageKey,
-          student: form.student.value,
-          grade: form.grade.value,
-          instrument: form.instrument.value,
-          parent: form.parent.value,
-          phone: form.phone.value,
-          email: form.email.value,
-          signature: form.signature.value,
-          date: form.date.value,
-          accessCode: (form.access_code && form.access_code.value.trim()) || "",
-          addons: addonQuantities(),
-          selectedPhotos: needsSelection ? selectedPhotos : [],
-          selectedPhotoCount: needsSelection ? selectedPhotos.length : 0,
-          expectedTotalCents,
-          successUrl: thanksBase + "?paid=1&session_id={CHECKOUT_SESSION_ID}",
-          cancelUrl,
-        }),
+        body: JSON.stringify(checkoutBody),
       });
 
       const result = await response.json().catch(() => ({}));
@@ -1197,6 +1523,10 @@
       const packageKey = selected.dataset.key;
       if (packageNeedsPrintSelection(packageKey) && selectedPhotos.length < 1) {
         showStatus("Select at least one photo to print using the checkboxes under the gallery photos, then try again.", true);
+        return;
+      }
+      if (!validateAddonPhotoAssignments()) {
+        showStatus("For each add-on with a quantity, choose which gallery photo(s) it applies to.", true);
         return;
       }
 
@@ -1243,6 +1573,9 @@
       if (!data || typeof data !== "object") return;
       if (data.type === "band-photo-selection") {
         applySelectedPhotos(data.photos || []);
+        if (Array.isArray(data.galleryPhotos)) {
+          applyGalleryPhotos(data.galleryPhotos);
+        }
         if (data.code && form.access_code && !form.access_code.value) {
           form.access_code.value = String(data.code).toUpperCase();
         }
@@ -1281,6 +1614,7 @@
     recalc();
     updatePayUi();
     updateSelectedPhotosUi();
+    renderAddonPhotoPickers();
     notifyParentHeight();
   </script>
 </body>

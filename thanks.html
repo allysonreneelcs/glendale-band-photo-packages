@@ -126,6 +126,7 @@
         ["Multi-photo pricing", order.Multi_photo_pricing],
         ["Package amount charged", order.Package_amount_charged || order.Package_total],
         ["Add-ons purchased", order.Add_ons_purchased || order.Add_ons],
+        ["Add-ons by photo", order.Add_ons_by_photo],
         ["Add-on total", order.Add_on_total || order.Addon_total],
         ["Selected photos for prints", order.Selected_photos_for_prints || order.Selected_photos],
         ["Photo previews", order.Photo_preview_links],
@@ -226,6 +227,7 @@
       const student = order.Student || "Student";
       const packagePurchased = order.Package_purchased || order.Package || "—";
       const addOnsPurchased = order.Add_ons_purchased || order.Add_ons || "None";
+      const addOnsByPhoto = order.Add_ons_by_photo || "None";
       const addonTotal = order.Add_on_total || order.Addon_total || "—";
       const selectedForPrints = order.Selected_photos_for_prints || order.Selected_photos || "—";
       const packageAmount = order.Package_amount_charged || order.Package_total || "—";
@@ -239,6 +241,7 @@
         Package_total: packageAmount,
         Add_ons_purchased: addOnsPurchased,
         Add_ons: addOnsPurchased,
+        Add_ons_by_photo: addOnsByPhoto,
         Add_on_total: addonTotal,
         Addon_total: addonTotal,
         Selected_photos_for_prints: selectedForPrints,
@@ -278,6 +281,7 @@
         Multi_photo_pricing: o.Multi_photo_pricing || "—",
         Package_amount_charged: o.Package_amount_charged || "—",
         Add_ons_purchased: o.Add_ons_purchased || "None",
+        Add_ons_by_photo: o.Add_ons_by_photo || "None",
         Add_on_total: o.Add_on_total || "—",
         Selected_photos_for_prints: o.Selected_photos_for_prints || "—",
         Photo_count: o.Photo_count || "—",

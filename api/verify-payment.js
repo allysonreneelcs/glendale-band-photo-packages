@@ -113,6 +113,7 @@ module.exports = async function handler(req, res) {
         ? `${meta.package}${meta.packagePrice ? " — " + meta.packagePrice : ""}`
         : "—");
     const addOnsPurchased = meta.addons || "None";
+    const addOnsByPhoto = meta.addonsByPhoto || "None";
     const addonTotal = meta.addonTotal || "—";
     const packageAmountCharged = meta.packageAmountCharged || "—";
     const selectedPhotosForPrints = meta.selectedPhotos || "—";
@@ -133,6 +134,7 @@ module.exports = async function handler(req, res) {
       Multi_photo_pricing: meta.multiPhotoPricing || "—",
       Package_amount_charged: packageAmountCharged,
       Add_ons_purchased: addOnsPurchased,
+      Add_ons_by_photo: addOnsByPhoto,
       Add_on_total: addonTotal,
       Selected_photos_for_prints: selectedPhotosForPrints,
       Selected_photo_ids: meta.selectedPhotoIds || "",

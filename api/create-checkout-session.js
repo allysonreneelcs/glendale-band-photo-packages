@@ -14,7 +14,10 @@ const {
   multiPhotoPackageAmount,
   multiPhotoPricingLabel,
   packageContentsText,
+  normalizeAddonAssignments,
   formatAddonPurchases,
+  formatAddonsByPhoto,
+  labAddonsByPhotoChecklist,
   formatDollarsFromCents,
   packagePurchasedLabel,
   labPrintChecklist,
@@ -192,17 +195,66 @@ module.exports = async function handler(req, res) {
     },
   ];
 
-  const addonQtyMeta = {};
-  const addons = body.addons && typeof body.addons === "object" ? body.addons : {};
+  const emptyAddons = { assignments: [], totalsByKey: {}, totalCents: 0 };
+  for (const key of Object.keys(ADDONS)) emptyAddons.totalsByKey[key] = 0;
+
+  const addonNormalized = digitalOnly
+    ? emptyAddons
+    : normalizeAddonAssignments(
+        body.addons,
+        body.addonsByPhoto,
+        body.addonAssignments
+      );
+  const addonQtyMeta = addonNormalized.totalsByKey;
+
+  // Require a gallery photo when client claims by-photo assignments.
+  if (!digitalOnly && addonNormalized.assignments.length) {
+    const missingPhoto = addonNormalized.assignments.some(
+      (a) => !a.id || a.id === "unassigned"
+    );
+    const byPhotoObj = body.addonsByPhoto && typeof body.addonsByPhoto === "object"
+      ? body.addonsByPhoto
+      : null;
+    const hasConcreteByPhoto =
+      (Array.isArray(body.addonAssignments) &&
+        body.addonAssignments.some(
+          (row) => row && row.id && String(row.id) !== "unassigned" && (Number(row.qty) || 0) > 0
+        )) ||
+      (byPhotoObj &&
+        Object.values(byPhotoObj).some((v) => {
+          if (Array.isArray(v)) return v.some((row) => row && (Number(row.qty) || 0) > 0);
+          if (v && typeof v === "object") {
+            return Object.values(v).some((q) => {
+              if (q && typeof q === "object") return (Number(q.qty) || 0) > 0;
+              return (Number(q) || 0) > 0;
+            });
+          }
+          return false;
+        }));
+    if (hasConcreteByPhoto && missingPhoto) {
+      res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        error: "Choose which gallery photo each add-on applies to.",
+      }));
+      return;
+    }
+  }
+
   if (!digitalOnly) {
     for (const [key, info] of Object.entries(ADDONS)) {
-      const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
-      addonQtyMeta[key] = qty;
+      const qty = addonQtyMeta[key] || 0;
       if (qty > 0) {
+        const photoBits = addonNormalized.assignments
+          .filter((a) => a.key === key)
+          .map((a) => `${a.filename}×${a.qty}`);
+        const desc = photoBits.length ? photoBits.join(", ").slice(0, 450) : undefined;
         lineItems.push({
           price_data: {
             currency: "usd",
-            product_data: { name: info.name },
+            product_data: {
+              name: info.name,
+              ...(desc ? { description: desc } : {}),
+            },
             unit_amount: info.unitAmount,
           },
           quantity: qty,
@@ -211,8 +263,9 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  const addonPurchase = formatAddonPurchases(digitalOnly ? {} : addonQtyMeta);
-  const addonCents = addonPurchase.totalCents;
+  const addonPurchase = formatAddonPurchases(addonNormalized);
+  const addonsByPhoto = formatAddonsByPhoto(addonNormalized);
+  const addonCents = addonNormalized.totalCents;
   const expectedTotal = packageAmount + addonCents;
   if (body.expectedTotalCents != null && body.expectedTotalCents !== "") {
     const clientTotal = Number(body.expectedTotalCents);
@@ -228,9 +281,13 @@ module.exports = async function handler(req, res) {
 
   const includesDigital = packageIncludesDigital(packageKey);
   const contents = packageContentsText(packageKey);
-  const labChecklist = digitalOnly
+  const labChecklistBase = digitalOnly
     ? "Digital only — no lab prints"
-    : labPrintChecklist(packageKey, addonQtyMeta, needsPrintSelection ? selectedPhotos.length : 1) || "None";
+    : labPrintChecklist(packageKey, addonNormalized, needsPrintSelection ? selectedPhotos.length : 1) || "None";
+  const labAddonPhotos = digitalOnly ? "" : labAddonsByPhotoChecklist(addonNormalized);
+  const labChecklist = labAddonPhotos
+    ? `${labChecklistBase} · Add-ons by photo: ${labAddonPhotos}`
+    : labChecklistBase;
 
   const selectedPhotosText = selectedPhotos
     .map((p, i) => `${i + 1}. ${p.filename}${p.id && p.id !== p.filename ? ` [${p.id}]` : ""}`)
@@ -266,8 +323,10 @@ module.exports = async function handler(req, res) {
         // When digital is included/paid, unlock is always the whole gallery — not selectedPhotoIds.
         digitalUnlockScope: includesDigital ? "all_gallery_photos" : "none",
         accessCode: accessCode || "",
-        // Specific names × qty = line total (e.g. Extra 8×10 ×2 = $24)
+        // Aggregate names × qty = line total (e.g. Extra 8×10 ×2 = $24)
         addons: addonPurchase.summary.slice(0, 450),
+        // Per-photo: Photo "a.jpg": Extra 8×10 ×2 ($24); …
+        addonsByPhoto: addonsByPhoto.summary.slice(0, 500),
         addonTotal: addonPurchase.totalLabel,
         selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),
         selectedPhotos: (selectedPhotosText || (digitalOnly ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
