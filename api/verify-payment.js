@@ -92,15 +92,26 @@ module.exports = async function handler(req, res) {
       ? `${apiBase.replace(/\/$/, "")}/index.html?code=${encodeURIComponent(accessCode)}`
       : "—";
 
-    const isDigitalOnly =
-      packageKey === "digital" ||
+    const addOnsPurchased = meta.addons || "None";
+    const addOnsByPhoto = meta.addonsByPhoto || "None";
+    const addonTotal = meta.addonTotal || "—";
+    const hasAddonPrints =
+      (addOnsPurchased && addOnsPurchased !== "None") ||
+      (addonTotal && addonTotal !== "—" && addonTotal !== "$0" && addonTotal !== "$0.00");
+    const isDigitalPackage = packageKey === "digital";
+    const isDigitalOnlyNoPrints =
+      (isDigitalPackage && !hasAddonPrints) ||
       String(meta.labPrintChecklist || "").toLowerCase().includes("digital only");
-    const hasPrints = !isDigitalOnly && (
+    const hasPrints = !isDigitalOnlyNoPrints && (
+      hasAddonPrints ||
       packageNeedsPrintSelection(packageKey) ||
       /\d/.test(String(meta.labPrintChecklist || ""))
     );
     let delivery;
-    if (isDigitalOnly) {
+    if (isDigitalPackage && hasAddonPrints) {
+      delivery =
+        "Digital Rights: ALL gallery photos are unlocked for download online. Add-on prints will be printed and then brought to the school for delivery.";
+    } else if (isDigitalOnlyNoPrints) {
       delivery =
         "Digital Rights: ALL gallery photos are unlocked for download online. This digital-only order does not include lab prints for school delivery.";
     } else if (hasPrints && includesDigital) {
@@ -118,9 +129,6 @@ module.exports = async function handler(req, res) {
       || (meta.package
         ? `${meta.package}${meta.packagePrice ? " — " + meta.packagePrice : ""}`
         : "—");
-    const addOnsPurchased = meta.addons || "None";
-    const addOnsByPhoto = meta.addonsByPhoto || "None";
-    const addonTotal = meta.addonTotal || "—";
     const packageAmountCharged = meta.packageAmountCharged || "—";
     const selectedPhotosForPrints = meta.selectedPhotos || "—";
 

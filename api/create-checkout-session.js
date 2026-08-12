@@ -32,12 +32,6 @@ function corsHeaders(origin) {
   };
 }
 
-function clampQty(value, max) {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.min(Math.floor(n), max);
-}
-
 function truncate(str, max) {
   return String(str || "").trim().slice(0, max);
 }
@@ -128,13 +122,12 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // Gallery "buy digital" flow can send minimal contact fields.
-  const digitalOnly = Boolean(body.digitalOnly) || packageKey === "digital";
-  const needsPrintSelection = !digitalOnly && packageNeedsPrintSelection(packageKey);
+  // Gallery "buy digital" button (index.html) sends digitalOnly:true — no add-ons.
+  // Full order form Digital Rights (packageKey=digital, digitalOnly unset) MAY include add-ons.
+  const galleryDigitalUnlock = Boolean(body.digitalOnly);
+  const isDigitalPackage = packageKey === "digital";
+  const needsPrintSelection = packageNeedsPrintSelection(packageKey);
   const selectedPhotos = needsPrintSelection ? normalizeSelectedPhotos(body.selectedPhotos) : [];
-  const selectedPhotoCount = needsPrintSelection
-    ? selectedPhotos.length
-    : (digitalOnly ? 0 : Math.max(1, clampQty(body.selectedPhotoCount, 40) || 1));
 
   if (needsPrintSelection && selectedPhotos.length < 1) {
     res.writeHead(400, { ...headers, "Content-Type": "application/json" });
@@ -145,12 +138,12 @@ module.exports = async function handler(req, res) {
   }
 
   const student = truncate(body.student, 80) || (accessCode ? `Access code ${accessCode}` : "");
-  const parent = truncate(body.parent, 80) || (digitalOnly ? "Gallery digital unlock" : "");
+  const parent = truncate(body.parent, 80) || (galleryDigitalUnlock ? "Gallery digital unlock" : "");
   const email = truncate(body.email, 120);
-  const phone = truncate(body.phone, 40) || (digitalOnly ? "—" : "");
+  const phone = truncate(body.phone, 40) || (galleryDigitalUnlock ? "—" : "");
   const grade = truncate(body.grade, 40);
   const instrument = truncate(body.instrument, 80);
-  const signature = truncate(body.signature, 80) || (digitalOnly ? parent || "Gallery" : "");
+  const signature = truncate(body.signature, 80) || (galleryDigitalUnlock ? parent || "Gallery" : "");
   const date = truncate(body.date, 40) || new Date().toISOString().slice(0, 10);
   const successUrl = truncate(body.successUrl, 500);
   const cancelUrl = truncate(body.cancelUrl, 500);
@@ -160,12 +153,12 @@ module.exports = async function handler(req, res) {
     res.end(JSON.stringify({ error: "Email is required." }));
     return;
   }
-  if (!digitalOnly && (!student || !parent || !phone || !signature || !date)) {
+  if (!galleryDigitalUnlock && (!student || !parent || !phone || !signature || !date)) {
     res.writeHead(400, { ...headers, "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Missing required order fields." }));
     return;
   }
-  if (digitalOnly && packageKey === "digital" && !accessCode) {
+  if (galleryDigitalUnlock && packageKey === "digital" && !accessCode) {
     res.writeHead(400, { ...headers, "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Access code is required to unlock digital rights for a gallery." }));
     return;
@@ -177,10 +170,10 @@ module.exports = async function handler(req, res) {
   }
 
   const photoCountForPrice = needsPrintSelection ? selectedPhotos.length : 1;
-  const packageAmount = digitalOnly
+  const packageAmount = isDigitalPackage
     ? pkg.unitAmount
     : multiPhotoPackageAmount(pkg.unitAmount, photoCountForPrice);
-  const pricingLabel = digitalOnly
+  const pricingLabel = isDigitalPackage
     ? "Digital Rights (full gallery)"
     : multiPhotoPricingLabel(pkg.unitAmount, photoCountForPrice);
 
@@ -208,17 +201,27 @@ module.exports = async function handler(req, res) {
   const emptyAddons = { assignments: [], totalsByKey: {}, totalCents: 0 };
   for (const key of Object.keys(ADDONS)) emptyAddons.totalsByKey[key] = 0;
 
-  const addonNormalized = digitalOnly
-    ? emptyAddons
-    : normalizeAddonAssignments(
-        body.addons,
-        body.addonsByPhoto,
-        body.addonAssignments
-      );
+  // Parse client add-on claim first (used for validation even on gallery unlock).
+  const clientAddonClaim = normalizeAddonAssignments(
+    body.addons,
+    body.addonsByPhoto,
+    body.addonAssignments
+  );
+
+  // Gallery quick-buy never charges add-ons. Order-form Digital Rights does.
+  const addonNormalized = galleryDigitalUnlock ? emptyAddons : clientAddonClaim;
   const addonQtyMeta = addonNormalized.totalsByKey;
 
+  if (galleryDigitalUnlock && clientAddonClaim.totalCents > 0) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      error: "Gallery digital unlock does not include print add-ons. Use the full order form.",
+    }));
+    return;
+  }
+
   // Require a gallery photo when client claims by-photo assignments.
-  if (!digitalOnly && addonNormalized.assignments.length) {
+  if (!galleryDigitalUnlock && addonNormalized.assignments.length) {
     const missingPhoto = addonNormalized.assignments.some(
       (a) => !a.id || a.id === "unassigned"
     );
@@ -250,32 +253,50 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  if (!digitalOnly) {
-    for (const [key, info] of Object.entries(ADDONS)) {
-      const qty = addonQtyMeta[key] || 0;
-      if (qty > 0) {
-        const photoBits = addonNormalized.assignments
-          .filter((a) => a.key === key)
-          .map((a) => `${a.label || a.filename}×${a.qty}`);
-        const desc = photoBits.length ? photoBits.join(", ").slice(0, 450) : undefined;
-        lineItems.push({
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: info.name,
-              ...(desc ? { description: desc } : {}),
-            },
-            unit_amount: info.unitAmount,
+  let addonLineItemCount = 0;
+  for (const [key, info] of Object.entries(ADDONS)) {
+    const qty = addonQtyMeta[key] || 0;
+    if (qty > 0) {
+      const photoBits = addonNormalized.assignments
+        .filter((a) => a.key === key)
+        .map((a) => `${a.label || a.filename}×${a.qty}`);
+      const desc = photoBits.length ? photoBits.join(", ").slice(0, 450) : undefined;
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: info.name,
+            ...(desc ? { description: desc } : {}),
           },
-          quantity: qty,
-        });
-      }
+          unit_amount: info.unitAmount,
+        },
+        quantity: qty,
+      });
+      addonLineItemCount += 1;
     }
   }
 
   const addonPurchase = formatAddonPurchases(addonNormalized);
   const addonsByPhoto = formatAddonsByPhoto(addonNormalized);
   const addonCents = addonNormalized.totalCents;
+  const expectedAddonKeys = Object.values(addonQtyMeta).filter((q) => q > 0).length;
+
+  // Add-on qty/assignments must produce matching Stripe line items (server-priced).
+  if (addonCents > 0 && addonLineItemCount !== expectedAddonKeys) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      error: "Add-ons could not be added to checkout. Refresh and try again.",
+    }));
+    return;
+  }
+  if (clientAddonClaim.totalCents > 0 && !galleryDigitalUnlock && addonCents !== clientAddonClaim.totalCents) {
+    res.writeHead(400, { ...headers, "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      error: "Add-on totals did not match. Refresh the page and try again.",
+    }));
+    return;
+  }
+
   const expectedTotal = packageAmount + addonCents;
   if (body.expectedTotalCents != null && body.expectedTotalCents !== "") {
     const clientTotal = Number(body.expectedTotalCents);
@@ -291,10 +312,11 @@ module.exports = async function handler(req, res) {
 
   const includesDigital = packageIncludesDigital(packageKey);
   const contents = packageContentsText(packageKey);
-  const labChecklistBase = digitalOnly
+  const hasAddonPrints = addonCents > 0;
+  const labChecklistBase = isDigitalPackage && !hasAddonPrints
     ? "Digital only — no lab prints"
     : labPrintChecklist(packageKey, addonNormalized, needsPrintSelection ? selectedPhotos.length : 1) || "None";
-  const labAddonPhotos = digitalOnly ? "" : labAddonsByPhotoChecklist(addonNormalized);
+  const labAddonPhotos = hasAddonPrints ? labAddonsByPhotoChecklist(addonNormalized) : "";
   const labChecklist = labAddonPhotos
     ? `${labChecklistBase} · Add-ons by photo: ${labAddonPhotos}`
     : labChecklistBase;
@@ -338,12 +360,17 @@ module.exports = async function handler(req, res) {
         // Per-photo: Photo 1 — a.jpg: Extra 8×10 ×2 ($24); …
         addonsByPhoto: addonsByPhoto.summary.slice(0, 500),
         addonTotal: addonPurchase.totalLabel,
-        selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),
-        selectedPhotos: (selectedPhotosText || (digitalOnly ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
+        expectedTotalCents: String(expectedTotal),
+        selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (isDigitalPackage ? 0 : 1)),
+        selectedPhotos: (selectedPhotosText || (isDigitalPackage ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
         selectedPhotoIds: selectedPhotoIds.slice(0, 450),
         selectedPhotosNote: needsPrintSelection
           ? "Print selection for lab only; digital (if included) unlocks ALL gallery photos"
-          : (digitalOnly ? "Digital unlocks ALL gallery photos; no print selection" : "—"),
+          : (isDigitalPackage
+            ? (hasAddonPrints
+              ? "Digital unlocks ALL gallery photos; add-on prints assigned below"
+              : "Digital unlocks ALL gallery photos; no print selection")
+            : "—"),
         multiPhotoPricing: pricingLabel.slice(0, 450),
         signature,
         date,
@@ -358,7 +385,15 @@ module.exports = async function handler(req, res) {
     });
 
     res.writeHead(200, { ...headers, "Content-Type": "application/json" });
-    res.end(JSON.stringify({ url: session.url, id: session.id }));
+    res.end(JSON.stringify({
+      url: session.url,
+      id: session.id,
+      // Echo server-priced totals for dry-run / client checks (no secrets).
+      lineItemCount: lineItems.length,
+      expectedTotalCents: expectedTotal,
+      addonTotalCents: addonCents,
+      addons: addonPurchase.summary,
+    }));
   } catch (err) {
     console.error("Stripe Checkout error:", err.message);
     res.writeHead(500, { ...headers, "Content-Type": "application/json" });

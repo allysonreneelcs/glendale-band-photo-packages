@@ -213,12 +213,21 @@
       const pkg = String(order.Package_purchased || order.Package || "").toLowerCase();
       const lab = String(order.Lab_print_checklist || "").toLowerCase();
       const digitalUnlock = String(order.Digital_unlock || "").toLowerCase();
-      const isDigitalOnly = digital || /^digital rights/.test(pkg) || lab.includes("digital only");
-      const hasPrints = !isDigitalOnly && (lab.includes("print") || /\d/.test(lab) || /keepsake|showcase|all-star|allstar/.test(pkg));
+      const addOns = String(order.Add_ons_purchased || order.Add_ons || "").trim();
+      const addonTotal = String(order.Add_on_total || order.Addon_total || "").trim();
+      const hasAddonPrints =
+        (addOns && addOns !== "None") ||
+        (addonTotal && addonTotal !== "—" && addonTotal !== "$0" && addonTotal !== "$0.00");
+      const isDigitalPackage = digital || /^digital rights/.test(pkg);
+      const isDigitalOnly = (isDigitalPackage && !hasAddonPrints) || lab.includes("digital only");
+      const hasPrints = !isDigitalOnly && (hasAddonPrints || lab.includes("print") || /\d/.test(lab) || /keepsake|showcase|all-star|allstar/.test(pkg));
       const includesDigital =
         digitalUnlock.includes("all gallery") ||
         /showcase|all-star|allstar|digital/.test(pkg);
 
+      if (isDigitalPackage && hasAddonPrints) {
+        return "Digital Rights: ALL gallery photos are unlocked for download online. Add-on prints will be printed and then brought to the school for delivery.";
+      }
       if (isDigitalOnly) {
         return "Digital Rights: ALL gallery photos are unlocked for download online. This digital-only order does not include lab prints for school delivery.";
       }
@@ -371,7 +380,33 @@
 
     function mergeOrder(localOrder, serverOrder) {
       if (!serverOrder && !localOrder) return null;
-      return Object.assign({}, localOrder || {}, serverOrder || {});
+      if (!serverOrder) return localOrder;
+      // Stripe-verified orderForEmail wins for charged amounts / add-ons so a
+      // stale sessionStorage snapshot cannot show Addon_total while Add_ons is None.
+      const merged = Object.assign({}, localOrder || {}, serverOrder);
+      const serverMoneyKeys = [
+        "Add_ons",
+        "Add_ons_purchased",
+        "Add_ons_by_photo",
+        "Add_on_total",
+        "Addon_total",
+        "Grand_total",
+        "Package_amount_charged",
+        "Package_total",
+        "Package_purchased",
+        "Package",
+        "Lab_print_checklist",
+        "Delivery",
+        "Digital_unlock",
+        "Payment",
+        "Stripe_session",
+      ];
+      serverMoneyKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(serverOrder, key) && serverOrder[key] != null && serverOrder[key] !== "") {
+          merged[key] = serverOrder[key];
+        }
+      });
+      return merged;
     }
 
     (async function init() {

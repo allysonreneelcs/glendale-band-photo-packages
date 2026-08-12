@@ -1212,6 +1212,11 @@
 
     function deliveryMessage(packageKey) {
       if (packageKey === "digital") {
+        const addonData = collectAddonAssignments();
+        const hasAddons = (addonData.assignments || []).some((a) => a.qty > 0);
+        if (hasAddons) {
+          return "Digital Rights: ALL gallery photos are unlocked for download online. Add-on prints will be printed and then brought to the school for delivery.";
+        }
         return "Digital Rights: ALL gallery photos are unlocked for download online. This digital-only order does not include lab prints for school delivery.";
       }
       if (packageKey === "keepsake") {
