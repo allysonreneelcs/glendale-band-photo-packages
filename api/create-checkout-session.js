@@ -14,6 +14,9 @@ const {
   multiPhotoPackageAmount,
   multiPhotoPricingLabel,
   packageContentsText,
+  formatAddonPurchases,
+  formatDollarsFromCents,
+  packagePurchasedLabel,
   labPrintChecklist,
 } = require("../lib/packages");
 const { formatCode } = require("../lib/codes");
@@ -189,10 +192,8 @@ module.exports = async function handler(req, res) {
     },
   ];
 
-  const addonParts = [];
   const addonQtyMeta = {};
   const addons = body.addons && typeof body.addons === "object" ? body.addons : {};
-  let addonCents = 0;
   if (!digitalOnly) {
     for (const [key, info] of Object.entries(ADDONS)) {
       const qty = clampQty(addons[key], key === "addon_46" ? 40 : key === "addon_1620" ? 10 : 20);
@@ -206,12 +207,12 @@ module.exports = async function handler(req, res) {
           },
           quantity: qty,
         });
-        addonParts.push(`${qty} × ${info.name}`);
-        addonCents += info.unitAmount * qty;
       }
     }
   }
 
+  const addonPurchase = formatAddonPurchases(digitalOnly ? {} : addonQtyMeta);
+  const addonCents = addonPurchase.totalCents;
   const expectedTotal = packageAmount + addonCents;
   if (body.expectedTotalCents != null && body.expectedTotalCents !== "") {
     const clientTotal = Number(body.expectedTotalCents);
@@ -256,15 +257,18 @@ module.exports = async function handler(req, res) {
         instrument: instrument || "—",
         package: pkg.name,
         packageKey,
-        packagePrice: `$${(pkg.unitAmount / 100).toFixed(0)}`,
-        packageAmountCharged: `$${(packageAmount / 100).toFixed(2).replace(/\.00$/, "")}`,
+        packagePrice: formatDollarsFromCents(pkg.unitAmount),
+        packagePurchased: packagePurchasedLabel(packageKey).slice(0, 450),
+        packageAmountCharged: formatDollarsFromCents(packageAmount),
         packageContents: contents.slice(0, 450),
         labPrintChecklist: labChecklist.slice(0, 450),
         includesDigital: includesDigital ? "1" : "0",
         // When digital is included/paid, unlock is always the whole gallery — not selectedPhotoIds.
         digitalUnlockScope: includesDigital ? "all_gallery_photos" : "none",
         accessCode: accessCode || "",
-        addons: addonParts.length ? addonParts.join(", ").slice(0, 450) : "None",
+        // Specific names × qty = line total (e.g. Extra 8×10 ×2 = $24)
+        addons: addonPurchase.summary.slice(0, 450),
+        addonTotal: addonPurchase.totalLabel,
         selectedPhotoCount: String(needsPrintSelection ? selectedPhotos.length : (digitalOnly ? 0 : 1)),
         selectedPhotos: (selectedPhotosText || (digitalOnly ? "N/A — digital unlock (all photos)" : "—")).slice(0, 450),
         selectedPhotoIds: selectedPhotoIds.slice(0, 450),

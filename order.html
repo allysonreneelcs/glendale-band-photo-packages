@@ -620,31 +620,31 @@
           <tr>
             <td>Extra 8×10</td>
             <td class="num">$12</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="12" data-label="Extra 8x10" name="addon_810" /></td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="12" data-label="Extra 8×10" name="addon_810" /></td>
             <td class="num line-total">$0</td>
           </tr>
           <tr>
             <td>Extra 5×7</td>
             <td class="num">$6</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 5x7" name="addon_57" /></td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 5×7" name="addon_57" /></td>
             <td class="num line-total">$0</td>
           </tr>
           <tr>
             <td>Extra 4×6</td>
             <td class="num">$3</td>
-            <td class="center"><input class="qty" type="number" min="0" max="40" value="" data-price="3" data-label="Extra 4x6" name="addon_46" /></td>
+            <td class="center"><input class="qty" type="number" min="0" max="40" value="" data-price="3" data-label="Extra 4×6" name="addon_46" /></td>
             <td class="num line-total">$0</td>
           </tr>
           <tr>
             <td>Extra sheet of 8 wallets</td>
             <td class="num">$6</td>
-            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra 8 wallets" name="addon_wallets" /></td>
+            <td class="center"><input class="qty" type="number" min="0" max="20" value="" data-price="6" data-label="Extra sheet of 8 wallets" name="addon_wallets" /></td>
             <td class="num line-total">$0</td>
           </tr>
           <tr>
             <td>Extra 16×20</td>
             <td class="num">$45</td>
-            <td class="center"><input class="qty" type="number" min="0" max="10" value="" data-price="45" data-label="Extra 16x20" name="addon_1620" /></td>
+            <td class="center"><input class="qty" type="number" min="0" max="10" value="" data-price="45" data-label="Extra 16×20" name="addon_1620" /></td>
             <td class="num line-total">$0</td>
           </tr>
         </tbody>
@@ -899,11 +899,19 @@
 
     function addonSummary() {
       const parts = [];
+      let addonDollars = 0;
       form.querySelectorAll(".qty").forEach((input) => {
         const qty = Number(input.value) || 0;
-        if (qty > 0) parts.push(qty + " × " + input.dataset.label);
+        if (qty < 1) return;
+        const price = Number(input.dataset.price) || 0;
+        const line = qty * price;
+        addonDollars += line;
+        parts.push(input.dataset.label + " ×" + qty + " = $" + money(line));
       });
-      return parts.length ? parts.join(", ") : "None";
+      return {
+        summary: parts.length ? parts.join("; ") : "None",
+        totalLabel: "$" + money(addonDollars),
+      };
     }
 
     function addonQuantities() {
@@ -983,6 +991,19 @@
       const count = packageNeedsPrintSelection(packageKey) ? selectedPhotos.length : 0;
 
       const needsPrint = packageNeedsPrintSelection(packageKey);
+      const packagePurchased = selected ? selected.value : "";
+      const packageAmount = needsPrint
+        ? multiPhotoPackageAmount(unit, count)
+        : unit;
+      const addons = addonSummary();
+      const selectedForPrints = needsPrint
+        ? selectedPhotosText()
+        : (packageKey === "digital" ? "N/A — digital unlock (all photos)" : "—");
+      const packageAmountLabel = "$" + money(packageAmount || 0);
+      const multiPricing = needsPrint
+        ? multiPhotoPricingLabel(unit, count)
+        : "N/A";
+
       return {
         _subject: subject,
         _template: "table",
@@ -991,27 +1012,22 @@
         Access_code: accessCode || "—",
         Grade: form.grade.value || "—",
         Instrument: form.instrument.value || "—",
-        Package: selected ? selected.value : "",
+        Package_purchased: packagePurchased,
         Package_contents: packageContentsText(packageKey),
-        Lab_print_checklist: labPrintChecklist(packageKey),
-        Add_ons: addonSummary(),
-        Selected_photos: needsPrint
-          ? selectedPhotosText()
-          : (packageKey === "digital" ? "N/A — digital unlock (all photos)" : "—"),
+        Multi_photo_pricing: multiPricing,
+        Package_amount_charged: packageAmountLabel,
+        Add_ons_purchased: addons.summary,
+        Add_on_total: addons.totalLabel,
+        Selected_photos_for_prints: selectedForPrints,
         Selected_photo_ids: needsPrint ? selectedPhotoIdsText() : "",
         Photo_count: needsPrint ? String(selectedPhotos.length) : (packageKey === "digital" ? "0" : "—"),
         Photo_preview_links: needsPrint ? photoPreviewLinksText(accessCode) : "—",
+        Lab_print_checklist: labPrintChecklist(packageKey),
         Gallery_link: galleryLinkText(accessCode),
         Selected_photos_note: needsPrint
           ? "Print selection for lab only; digital (if included) unlocks ALL gallery photos"
           : (packageKey === "digital" ? "Digital unlocks ALL gallery photos; no print selection" : "—"),
         Delivery: deliveryMessage(packageKey),
-        Multi_photo_pricing: needsPrint
-          ? multiPhotoPricingLabel(unit, count)
-          : "N/A",
-        Package_total: "$" + (pkgTotal.value || "0"),
-        Multi_photo_total: multiPhotoTotal && multiPhotoTotal.value ? "$" + multiPhotoTotal.value : "$0",
-        Addon_total: "$" + (addonTotal.value || "0"),
         Grand_total: "$" + (grandTotal.value || "0"),
         Parent: form.parent.value,
         Phone: form.phone.value,
@@ -1019,6 +1035,13 @@
         Payment: extraPayment || paymentMethods(),
         Signature: form.signature.value,
         Date: form.date.value,
+        // Legacy aliases for older thanks.html merge paths
+        Package: packagePurchased,
+        Add_ons: addons.summary,
+        Addon_total: addons.totalLabel,
+        Selected_photos: selectedForPrints,
+        Package_total: packageAmountLabel,
+        Multi_photo_total: multiPhotoTotal && multiPhotoTotal.value ? "$" + multiPhotoTotal.value : "$0",
       };
     }
 

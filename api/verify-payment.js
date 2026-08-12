@@ -108,6 +108,16 @@ module.exports = async function handler(req, res) {
     }
 
     const studentLabel = meta.student || "Student";
+    const packagePurchased = meta.packagePurchased
+      || (meta.package
+        ? `${meta.package}${meta.packagePrice ? " — " + meta.packagePrice : ""}`
+        : "—");
+    const addOnsPurchased = meta.addons || "None";
+    const addonTotal = meta.addonTotal || "—";
+    const packageAmountCharged = meta.packageAmountCharged || "—";
+    const selectedPhotosForPrints = meta.selectedPhotos || "—";
+
+    // Clear FormSubmit table labels for photographer + parent CC confirmation.
     const orderForEmail = {
       _subject: accessCode
         ? `Order confirmation — Glendale band photos — ${studentLabel} — ${accessCode}`
@@ -118,22 +128,21 @@ module.exports = async function handler(req, res) {
       Access_code: accessCode || "—",
       Grade: meta.grade || "—",
       Instrument: meta.instrument || "—",
-      Package: meta.package
-        ? `${meta.package}${meta.packagePrice ? " — " + meta.packagePrice : ""}`
-        : "—",
+      Package_purchased: packagePurchased,
       Package_contents: meta.packageContents || "—",
-      Lab_print_checklist: meta.labPrintChecklist || "—",
-      Add_ons: meta.addons || "None",
-      Selected_photos: meta.selectedPhotos || "—",
+      Multi_photo_pricing: meta.multiPhotoPricing || "—",
+      Package_amount_charged: packageAmountCharged,
+      Add_ons_purchased: addOnsPurchased,
+      Add_on_total: addonTotal,
+      Selected_photos_for_prints: selectedPhotosForPrints,
       Selected_photo_ids: meta.selectedPhotoIds || "",
       Photo_count: meta.selectedPhotoCount || "—",
       Photo_preview_links: photoPreviewLinks,
+      Lab_print_checklist: meta.labPrintChecklist || "—",
       Gallery_link: galleryLink,
       Selected_photos_note: meta.selectedPhotosNote || "—",
       Delivery: delivery,
       Digital_unlock: includesDigital ? "ALL gallery photos (not only print-selected)" : "None",
-      Multi_photo_pricing: meta.multiPhotoPricing || "—",
-      Package_amount_charged: meta.packageAmountCharged || "—",
       Grand_total: amountTotal || "—",
       Parent: meta.parent || "—",
       Phone: meta.phone || "—",
@@ -142,6 +151,12 @@ module.exports = async function handler(req, res) {
       Signature: meta.signature || "—",
       Date: meta.date || "—",
       Stripe_session: session.id,
+      // Legacy aliases (merged with local sessionStorage)
+      Package: packagePurchased,
+      Add_ons: addOnsPurchased,
+      Addon_total: addonTotal,
+      Selected_photos: selectedPhotosForPrints,
+      Package_total: packageAmountCharged,
     };
 
     sendJson(res, 200, headers, {

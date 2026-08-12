@@ -121,17 +121,19 @@
         ["Access code", order.Access_code],
         ["Grade", order.Grade],
         ["Instrument", order.Instrument],
-        ["Package", order.Package],
+        ["Package purchased", order.Package_purchased || order.Package],
         ["Package contents", order.Package_contents],
-        ["Lab print checklist", order.Lab_print_checklist],
-        ["Photos selected for print", order.Selected_photos],
+        ["Multi-photo pricing", order.Multi_photo_pricing],
+        ["Package amount charged", order.Package_amount_charged || order.Package_total],
+        ["Add-ons purchased", order.Add_ons_purchased || order.Add_ons],
+        ["Add-on total", order.Add_on_total || order.Addon_total],
+        ["Selected photos for prints", order.Selected_photos_for_prints || order.Selected_photos],
         ["Photo previews", order.Photo_preview_links],
+        ["Lab print checklist", order.Lab_print_checklist],
         ["Gallery link", order.Gallery_link],
         ["Delivery", order.Delivery],
-        ["Add-ons", order.Add_ons],
-        ["Package total", order.Package_total || order.Package_amount_charged],
-        ["Add-on total", order.Addon_total],
-        ["Total", order.Grand_total],
+        ["Digital unlock", order.Digital_unlock],
+        ["Grand total", order.Grand_total],
         ["Parent", order.Parent],
         ["Phone", order.Phone],
         ["Email", order.Email],
@@ -140,7 +142,7 @@
       ];
       summary.innerHTML = "";
       rows.forEach(([label, value]) => {
-        if (!value || value === "—") return;
+        if (!value || value === "—" || value === "N/A") return;
         const dt = document.createElement("dt");
         dt.textContent = label;
         const dd = document.createElement("dd");
@@ -198,7 +200,7 @@
 
     function deliveryForOrder(order) {
       if (order.Delivery && order.Delivery !== "—") return order.Delivery;
-      const pkg = String(order.Package || "").toLowerCase();
+      const pkg = String(order.Package_purchased || order.Package || "").toLowerCase();
       const lab = String(order.Lab_print_checklist || "").toLowerCase();
       const digitalUnlock = String(order.Digital_unlock || "").toLowerCase();
       const isDigitalOnly = digital || /^digital rights/.test(pkg) || lab.includes("digital only");
@@ -222,12 +224,32 @@
     function enrichOrderForEmail(order) {
       const code = String(order.Access_code || accessCode || "").trim() || "—";
       const student = order.Student || "Student";
+      const packagePurchased = order.Package_purchased || order.Package || "—";
+      const addOnsPurchased = order.Add_ons_purchased || order.Add_ons || "None";
+      const addonTotal = order.Add_on_total || order.Addon_total || "—";
+      const selectedForPrints = order.Selected_photos_for_prints || order.Selected_photos || "—";
+      const packageAmount = order.Package_amount_charged || order.Package_total || "—";
       const enriched = Object.assign({}, order, {
         Access_code: code,
+        Package_purchased: packagePurchased,
+        Package: packagePurchased,
+        Package_contents: order.Package_contents || "—",
+        Multi_photo_pricing: order.Multi_photo_pricing || "—",
+        Package_amount_charged: packageAmount,
+        Package_total: packageAmount,
+        Add_ons_purchased: addOnsPurchased,
+        Add_ons: addOnsPurchased,
+        Add_on_total: addonTotal,
+        Addon_total: addonTotal,
+        Selected_photos_for_prints: selectedForPrints,
+        Selected_photos: selectedForPrints,
         Gallery_link: order.Gallery_link && order.Gallery_link !== "—"
           ? order.Gallery_link
           : galleryAbsoluteUrl(code),
-        Photo_preview_links: buildPhotoPreviewLinks(order),
+        Photo_preview_links: buildPhotoPreviewLinks(Object.assign({}, order, {
+          Access_code: code,
+          Selected_photos: selectedForPrints,
+        })),
         Delivery: deliveryForOrder(order),
         _template: "table",
         _captcha: "false",
@@ -238,6 +260,42 @@
           : "Order confirmation — Glendale band photos — " + student;
       }
       return enriched;
+    }
+
+    /** FormSubmit table fields only — clear labels, no duplicate legacy aliases. */
+    function formSubmitPayload(order) {
+      const o = enrichOrderForEmail(order);
+      return {
+        _subject: o._subject,
+        _template: "table",
+        _captcha: "false",
+        Student: o.Student || "—",
+        Access_code: o.Access_code || "—",
+        Grade: o.Grade || "—",
+        Instrument: o.Instrument || "—",
+        Package_purchased: o.Package_purchased || "—",
+        Package_contents: o.Package_contents || "—",
+        Multi_photo_pricing: o.Multi_photo_pricing || "—",
+        Package_amount_charged: o.Package_amount_charged || "—",
+        Add_ons_purchased: o.Add_ons_purchased || "None",
+        Add_on_total: o.Add_on_total || "—",
+        Selected_photos_for_prints: o.Selected_photos_for_prints || "—",
+        Photo_count: o.Photo_count || "—",
+        Photo_preview_links: o.Photo_preview_links || "—",
+        Lab_print_checklist: o.Lab_print_checklist || "—",
+        Gallery_link: o.Gallery_link || "—",
+        Selected_photos_note: o.Selected_photos_note || "—",
+        Delivery: o.Delivery || "—",
+        Digital_unlock: o.Digital_unlock || "—",
+        Grand_total: o.Grand_total || "—",
+        Parent: o.Parent || "—",
+        Phone: o.Phone || "—",
+        Email: o.Email || "—",
+        Payment: o.Payment || "—",
+        Signature: o.Signature || "—",
+        Date: o.Date || "—",
+        Stripe_session: o.Stripe_session || "",
+      };
     }
 
     async function formSubmitTo(toEmail, payload) {
@@ -258,7 +316,7 @@
 
     /**
      * Dual confirmation via one FormSubmit post to the photographer:
-     * - Full order table (photos, package, delivery, totals)
+     * - Full order table (specific package, add-ons with qty/line totals, photos, delivery)
      * - _cc parent email (reliable; parent does not need FormSubmit activation)
      * - _replyto parent so Allyson can reply easily
      */
@@ -275,9 +333,7 @@
         parentEmail.includes("@") &&
         parentEmail.toLowerCase() !== photographerEmail.toLowerCase();
 
-      const photographerPayload = Object.assign({}, enriched, {
-        _subject: enriched._subject || "Order confirmation — Glendale band photos",
-      });
+      const photographerPayload = formSubmitPayload(enriched);
       if (parentOk) {
         photographerPayload._replyto = parentEmail;
         photographerPayload._cc = parentEmail;
