@@ -443,6 +443,19 @@
       <div class="actions" style="margin-bottom:0.85rem">
         <button type="button" class="ghost" id="change-code">Enter a different code</button>
         <button type="button" class="hidden" id="download-all">Download all photos</button>
+        <a
+          class="btn ghost hidden"
+          id="download-rights"
+          href="assets/Digital-and-Print-Rights-Release.png"
+          download="Digital-and-Print-Rights-Release.png"
+        >Download Print Rights release</a>
+        <a
+          class="btn ghost hidden"
+          id="view-rights"
+          href="assets/Digital-and-Print-Rights-Release.png"
+          target="_blank"
+          rel="noopener"
+        >View release</a>
       </div>
 
       <div id="photo-grid" class="grid" aria-live="polite"></div>
@@ -545,6 +558,8 @@
     const lightboxImg = document.getElementById("lightbox-img");
     const lightboxSelect = document.getElementById("lightbox-select");
     const downloadAllBtn = document.getElementById("download-all");
+    const downloadRightsLink = document.getElementById("download-rights");
+    const viewRightsLink = document.getElementById("view-rights");
     const lightboxDownload = document.getElementById("lightbox-download");
     let current = null;
     let activePhotoId = null;
@@ -771,6 +786,15 @@
         note.textContent = "This code is active, but photos have not been uploaded yet.";
         buyBox.classList.add("hidden");
         downloadAllBtn.classList.add("hidden");
+        if (student.digitalPaid) {
+          badge.textContent = "Digital unlocked";
+          badge.className = "badge paid";
+          if (downloadRightsLink) downloadRightsLink.classList.remove("hidden");
+          if (viewRightsLink) viewRightsLink.classList.remove("hidden");
+        } else {
+          if (downloadRightsLink) downloadRightsLink.classList.add("hidden");
+          if (viewRightsLink) viewRightsLink.classList.add("hidden");
+        }
         if (selectionBar) selectionBar.classList.add("hidden");
         renderPhotos(student);
         return;
@@ -779,15 +803,19 @@
       if (student.digitalPaid) {
         badge.textContent = "Digital unlocked";
         badge.className = "badge paid";
-        note.textContent = "Digital rights are on — you can download every photo below (Download all, or open each photo). Please don’t reshare full-resolution files publicly. Checkboxes only choose which photos get lab prints.";
+        note.textContent = "Digital rights are on — you can download every photo below (Download all, or open each photo). Your Digital and Print Rights release from Allyson Renée LCS is available here for personal printing. Please don’t reshare full-resolution files publicly. Checkboxes only choose which photos get lab prints.";
         buyBox.classList.add("hidden");
         downloadAllBtn.classList.remove("hidden");
+        if (downloadRightsLink) downloadRightsLink.classList.remove("hidden");
+        if (viewRightsLink) viewRightsLink.classList.remove("hidden");
       } else {
         badge.textContent = "View only";
         badge.className = "badge preview";
         note.textContent = "Preview gallery with watermarks. Check the box under each photo you want printed, then order below. Screenshots can’t be fully blocked — unpaid views stay watermarked. Pay for Digital Rights to unlock clean downloads of all photos.";
         buyBox.classList.remove("hidden");
         downloadAllBtn.classList.add("hidden");
+        if (downloadRightsLink) downloadRightsLink.classList.add("hidden");
+        if (viewRightsLink) viewRightsLink.classList.add("hidden");
       }
       renderPhotos(student);
     }
